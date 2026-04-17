@@ -1,0 +1,17 @@
+[project]
+package-mode = false
+name = "2025-26d-fai1-adsai-group-15"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "LucandenDekker251285",email = "251285@buas.nl"}
+]
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"

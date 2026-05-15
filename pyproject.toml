@@ -7,11 +7,7 @@ authors = [
     {name = "LucandenDekker251285",email = "251285@buas.nl"}
 ]
 readme = "README.md"
-<<<<<<< HEAD
 requires-python = ">=3.11"
-=======
-requires-python = ">=3.10"
->>>>>>> origin/main
 dependencies = [
     "pandas (>=3.0.3,<4.0.0)",
     "numpy (>=2.4.4,<3.0.0)",

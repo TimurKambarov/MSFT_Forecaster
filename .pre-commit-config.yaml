@@ -1,0 +1,17 @@
+# Pre-commit configuration for msft-forecaster
+# Runs automatically on `git commit` after `pre-commit install`
+# Manual run across all files: `pre-commit run --all-files`
+
+repos:
+  - repo: https://github.com/psf/black
+    rev: 24.10.0
+    hooks:
+      - id: black
+        language_version: python3   # match your Poetry python version
+        args: ["--line-length=100"]    # team convention; adjust if needed
+        exclude: |
+          (?x)^(
+            notebooks/.*\.ipynb|
+            data/.*|
+            models/.*
+          )$

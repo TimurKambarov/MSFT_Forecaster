@@ -36,25 +36,15 @@
       </a>
     </nav>
     <div class="sidebar-flex"></div>
-    <div class="sidebar-status-card">
-      <div class="status-card-label">Data status</div>
-      <div class="status-card-row">
-        <span class="status-dot" id="status-dot"></span>
-        <span class="status-card-text" id="status-card-text">Connecting...</span>
-      </div>
-    </div>
     <div class="sidebar-footer-text">Group 15 · BUas · Block D</div>
   </aside>
 
   <!-- ── Main ──────────────────────────────────────────────────────────────── -->
   <main class="main-wrapper">
     <div class="top-bar">
-      <span class="top-bar-left">streamlit · localhost:8501</span>
+      <span class="top-bar-left">MSFT Direction Predictor · Group 15</span>
       <span class="top-bar-right">
         <span>MSFT · NASDAQ</span>
-        <span class="topbar-connected" id="topbar-status">● Connected</span>
-        <span>⟳ Rerun</span>
-        <span>⋮</span>
       </span>
     </div>
 
@@ -143,21 +133,6 @@
             <div class="page-lead">Explore MSFT closing price and overlay macro indicators.</div>
           </div>
 
-          <div class="date-range-bar">
-            <div class="dr-input-group">
-              <span class="dr-label">Start date</span>
-              <input type="date" id="date-start" class="dr-input-native" />
-            </div>
-            <div class="dr-input-group">
-              <span class="dr-label">End date</span>
-              <input type="date" id="date-end" class="dr-input-native" />
-            </div>
-            <div class="dr-spacer"></div>
-            <div class="dr-btns">
-              <button class="btn" id="btn-reset">Reset</button>
-              <button class="btn btn-primary" id="btn-apply">Apply</button>
-            </div>
-          </div>
 
           <div class="chart-block">
             <div class="chart-block-head">
@@ -168,6 +143,54 @@
               <div class="overlay-toggles" id="overlay-toggles"></div>
             </div>
             <svg id="svg-history" class="svg-full" viewBox="0 0 1080 300" preserveAspectRatio="none" style="height:300px"></svg>
+            <div class="period-bar">
+              <button class="period-bar-btn" data-period="1W">1W</button>
+              <button class="period-bar-btn" data-period="1M">1M</button>
+              <button class="period-bar-btn" data-period="3M">3M</button>
+              <button class="period-bar-btn" data-period="1Y">1Y</button>
+              <button class="period-bar-btn period-bar-active" data-period="MAX">MAX</button>
+              <button class="period-bar-btn period-bar-cal" id="btn-cal" title="Go to date">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <rect x="1" y="3" width="14" height="12" rx="2"/>
+                  <line x1="1" y1="7" x2="15" y2="7"/>
+                  <line x1="5" y1="1" x2="5" y2="5"/>
+                  <line x1="11" y1="1" x2="11" y2="5"/>
+                  <line x1="10" y1="12" x2="14" y2="12"/>
+                  <line x1="14" y1="10" x2="14" y2="14"/>
+                </svg>
+              </button>
+            </div>
+
+            <!-- Calendar modal -->
+            <div class="cal-overlay" id="cal-overlay">
+              <div class="cal-modal">
+                <div class="cal-header">
+                  <span class="cal-title">Go to</span>
+                  <button class="cal-close" id="cal-close">✕</button>
+                </div>
+                <div class="cal-tabs">
+                  <button class="cal-tab cal-tab-active" data-tab="single">Date</button>
+                  <button class="cal-tab" data-tab="range">Custom range</button>
+                </div>
+                <div class="cal-body" id="cal-tab-single">
+                  <input type="date" class="cal-input" id="cal-single-date" />
+                </div>
+                <div class="cal-body cal-hidden" id="cal-tab-range">
+                  <div class="cal-row">
+                    <label class="cal-label">From</label>
+                    <input type="date" class="cal-input" id="cal-range-start" />
+                  </div>
+                  <div class="cal-row">
+                    <label class="cal-label">To</label>
+                    <input type="date" class="cal-input" id="cal-range-end" />
+                  </div>
+                </div>
+                <div class="cal-footer">
+                  <button class="btn" id="cal-cancel">Cancel</button>
+                  <button class="btn btn-primary" id="cal-goto">Go to</button>
+                </div>
+              </div>
+            </div>
           </div>
 
           <div class="split-row">
@@ -344,6 +367,6 @@
     </div><!-- /page-content -->
   </main>
 
-  <script src="/static/app.js"></script>
+  <script src="/static/app.js?v=4"></script>
 </body>
 </html>

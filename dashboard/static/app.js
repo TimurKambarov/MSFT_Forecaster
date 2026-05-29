@@ -112,38 +112,106 @@ function initNav() {
   });
 }
 
-function initDatePicker() {
-  const startEl = document.getElementById('date-start');
-  const endEl   = document.getElementById('date-end');
-  const applyEl = document.getElementById('btn-apply');
-  const resetEl = document.getElementById('btn-reset');
-  if (!startEl || !endEl) return;
+// ── Chart view state (indices into historyData) ────────────────────────────
+let viewStart = 0;
+let viewEnd   = 0;
 
-  // Set defaults to full range of loaded data
-  function setDefaults() {
-    if (!historyData.length) return;
-    startEl.value = historyData.at(0).date?.slice(0, 10) ?? '';
-    endEl.value   = historyData.at(-1).date?.slice(0, 10) ?? '';
+function updateDateDisplay() {
+  const s = document.getElementById('disp-start');
+  const e = document.getElementById('disp-end');
+  if (s && historyData[viewStart]) s.textContent = historyData[viewStart].date?.slice(0, 10) ?? '—';
+  if (e && historyData[viewEnd])   e.textContent = historyData[viewEnd].date?.slice(0, 10) ?? '—';
+}
+
+function renderView() {
+  filteredData = historyData.slice(viewStart, viewEnd + 1);
+  renderHistoryChart(filteredData, overlayState);
+  renderOverlayToggles();
+  renderReturns(filteredData);
+  renderSummaryStats(filteredData);
+  updateDateDisplay();
+}
+
+function setPeriod(period) {
+  if (!historyData.length) return;
+  const last = new Date(historyData.at(-1).date);
+  let cutoff = null;
+  if (period === '1W') { cutoff = new Date(last); cutoff.setDate(cutoff.getDate() - 7); }
+  else if (period === '1M') { cutoff = new Date(last); cutoff.setMonth(cutoff.getMonth() - 1); }
+  else if (period === '3M') { cutoff = new Date(last); cutoff.setMonth(cutoff.getMonth() - 3); }
+  else if (period === '1Y') { cutoff = new Date(last); cutoff.setFullYear(cutoff.getFullYear() - 1); }
+
+  if (cutoff) {
+    const cutStr = cutoff.toISOString().slice(0, 10);
+    viewStart = historyData.findIndex(r => r.date >= cutStr);
+    if (viewStart < 0) viewStart = 0;
+  } else {
+    viewStart = 0;
   }
+  viewEnd = historyData.length - 1;
 
-  function applyFilter() {
-    const s = startEl.value, e = endEl.value;
-    filteredData = historyData.filter(r => {
-      const d = r.date?.slice(0, 10) ?? '';
-      return (!s || d >= s) && (!e || d <= e);
+  document.querySelectorAll('.period-bar-btn').forEach(b =>
+    b.classList.toggle('period-bar-active', b.dataset.period === period)
+  );
+  renderView();
+}
+
+function initChartInteraction() {
+  document.querySelectorAll('.period-bar-btn[data-period]').forEach(btn => {
+    btn.addEventListener('click', () => setPeriod(btn.dataset.period));
+  });
+
+  // ── Calendar modal ─────────────────────────────────────────────────────────
+  const overlay  = document.getElementById('cal-overlay');
+  const btnCal   = document.getElementById('btn-cal');
+  const btnClose = document.getElementById('cal-close');
+  const btnCancel= document.getElementById('cal-cancel');
+  const btnGoto  = document.getElementById('cal-goto');
+  let activeTab  = 'single';
+
+  function openModal() { overlay.classList.add('cal-open'); }
+  function closeModal(){ overlay.classList.remove('cal-open'); }
+
+  btnCal?.addEventListener('click', openModal);
+  btnClose?.addEventListener('click', closeModal);
+  btnCancel?.addEventListener('click', closeModal);
+  overlay?.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
+
+  document.querySelectorAll('.cal-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      activeTab = tab.dataset.tab;
+      document.querySelectorAll('.cal-tab').forEach(t => t.classList.toggle('cal-tab-active', t === tab));
+      document.getElementById('cal-tab-single').classList.toggle('cal-hidden', activeTab !== 'single');
+      document.getElementById('cal-tab-range').classList.toggle('cal-hidden', activeTab !== 'range');
     });
-    if (!filteredData.length) filteredData = historyData;
-    renderHistoryChart(filteredData, overlayState);
-    renderOverlayToggles();
-    renderReturns(filteredData);
-    renderSummaryStats(filteredData);
-  }
+  });
 
-  applyEl?.addEventListener('click', applyFilter);
-  resetEl?.addEventListener('click', () => { setDefaults(); applyFilter(); });
-
-  // Expose so renderAll can call it after data loads
-  window._datePickerSetDefaults = setDefaults;
+  btnGoto?.addEventListener('click', () => {
+    if (activeTab === 'single') {
+      const d = document.getElementById('cal-single-date').value;
+      if (!d) return;
+      const idx = historyData.findIndex(r => r.date >= d);
+      if (idx >= 0) {
+        viewStart = Math.max(0, idx - 30);
+        viewEnd   = Math.min(historyData.length - 1, idx + 30);
+        document.querySelectorAll('.period-bar-btn').forEach(b => b.classList.remove('period-bar-active'));
+        renderView();
+      }
+    } else {
+      const s = document.getElementById('cal-range-start').value;
+      const e = document.getElementById('cal-range-end').value;
+      if (!s || !e) return;
+      const si = historyData.findIndex(r => r.date >= s);
+      const ei = historyData.findLastIndex(r => r.date <= e);
+      if (si >= 0 && ei >= si) {
+        viewStart = si;
+        viewEnd   = ei;
+        document.querySelectorAll('.period-bar-btn').forEach(b => b.classList.remove('period-bar-active'));
+        renderView();
+      }
+    }
+    closeModal();
+  });
 }
 
 function navigateTo(pageId) {
@@ -277,9 +345,11 @@ function renderHistoryChart(data, overlays) {
   }
   svgText(svg, 8, 20 - 10, 'idx', { mono:true, fill: C.textDim });
 
-  const areaPts = mkPath(pts);
-  svg.append(svgEl('path', { d: `${areaPts} L ${xs(n-1).toFixed(1)} ${H-40} L ${xs(0).toFixed(1)} ${H-40} Z`, fill:'url(#lgh)' }));
-  if (overlays.msft) svg.append(svgEl('path', { d: mkPath(pts),     fill:'none', stroke:C.accent,   'stroke-width':'2' }));
+  if (overlays.msft) {
+    const areaPts = mkPath(pts);
+    svg.append(svgEl('path', { d: `${areaPts} L ${xs(n-1).toFixed(1)} ${H-40} L ${xs(0).toFixed(1)} ${H-40} Z`, fill:'url(#lgh)' }));
+    svg.append(svgEl('path', { d: mkPath(pts), fill:'none', stroke:C.accent, 'stroke-width':'2' }));
+  }
   if (overlays.gold) svg.append(svgEl('path', { d: mkPath(goldPts), fill:'none', stroke:C.amber,    'stroke-width':'1.5', 'stroke-dasharray':'4 3', opacity:'0.85' }));
   if (overlays.oil)  svg.append(svgEl('path', { d: mkPath(oilPts),  fill:'none', stroke:C.red,      'stroke-width':'1.5', 'stroke-dasharray':'4 3', opacity:'0.7' }));
   if (overlays.vix)  svg.append(svgEl('path', { d: mkPath(vixPts),  fill:'none', stroke:'#A8ADB5',  'stroke-width':'1.5', 'stroke-dasharray':'4 3', opacity:'0.6' }));
@@ -530,6 +600,8 @@ function setStatus(mode) {
 function renderAll(data, prediction, metrics) {
   historyData  = data;
   filteredData = data;
+  viewStart    = 0;
+  viewEnd      = data.length - 1;
   const latest = data.at(-1), prev = data.at(-2);
   renderPrediction(prediction);
   renderKPIs(latest, prev);
@@ -538,7 +610,8 @@ function renderAll(data, prediction, metrics) {
   renderOverlayToggles();
   renderReturns(filteredData);
   renderSummaryStats(filteredData);
-  window._datePickerSetDefaults?.();
+  updateDateDisplay();
+  setPeriod('MAX');
   renderConfusionMatrix();
   renderModelCompare();
   renderFeatureBars();
@@ -549,7 +622,7 @@ function renderAll(data, prediction, metrics) {
 const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:5000' : '';
 
 async function apiFetch(path) {
-  const res = await fetch(`${API_BASE}${path}`, { signal: AbortSignal.timeout(4000) });
+  const res = await fetch(`${API_BASE}${path}`, { signal: AbortSignal.timeout(15000) });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
 }
@@ -557,20 +630,16 @@ async function apiFetch(path) {
 // ── Init ───────────────────────────────────────────────────────────────────────
 async function init() {
   initNav();
-  initDatePicker();
+  initChartInteraction();
 
-  try {
-    const [histRes, predRes, metricsRes] = await Promise.all([
-      apiFetch('/api/stock/history?days=90'),
-      apiFetch('/api/prediction/latest').catch(() => null),
-      apiFetch('/api/model/metrics').catch(() => null),
-    ]);
-    renderAll(histRes.data ?? SAMPLE_HISTORY, predRes?.data, metricsRes?.data);
-    setStatus('live');
-  } catch {
-    renderAll(SAMPLE_HISTORY, null, null);
-    setStatus('demo');
-  }
+  const [histRes, predRes, metricsRes] = await Promise.all([
+    apiFetch('/api/stock/history?days=9999').catch(() => null),
+    apiFetch('/api/prediction/latest').catch(() => null),
+    apiFetch('/api/model/metrics').catch(() => null),
+  ]);
+
+  const data = histRes?.data?.length ? histRes.data : SAMPLE_HISTORY;
+  renderAll(data, predRes?.data, metricsRes?.data);
 }
 
 document.addEventListener('DOMContentLoaded', init);

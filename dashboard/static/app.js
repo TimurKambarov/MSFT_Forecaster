@@ -473,24 +473,33 @@ function renderModelCompare() {
     { name:'LSTM',          f1:0.69 },
     { name:'Stacking',      f1:0.79, ens:true },
   ];
-  const W=560, H=220, padL=100, padR=20, padT=16, padB=30;
-  const bh = (H-padT-padB)/models.length - 6;
+  const W=560, H=220, padL=110, padR=40, padT=20, padB=36;
+  const gap = 10;
+  const bh  = (H - padT - padB - gap * (models.length - 1)) / models.length;
+  const barW = W - padL - padR;
 
-  [0,0.2,0.4,0.6,0.8,1].forEach(t => {
-    const x = padL + t*(W-padL-padR);
+  // Grid lines at 0, 0.2, 0.4, 0.6, 0.8, 1.0
+  [0, 0.2, 0.4, 0.6, 0.8, 1.0].forEach(t => {
+    const x = padL + t * barW;
     svg.append(svgEl('line', { x1:x, x2:x, y1:padT, y2:H-padB, stroke:C.lineSoft, 'stroke-dasharray':'2 4' }));
-    svgText(svg, x, H-padB+14, t.toFixed(1), { anchor:'middle', mono:true });
+    svgText(svg, x, H - padB + 16, t.toFixed(1), { anchor:'middle', mono:true, size:'10' });
   });
 
   models.forEach((m, i) => {
-    const y = padT + i*(bh+6), w = m.f1*(W-padL-padR);
-    const nm = svgEl('text', { x:padL-8, y:y+bh/2+4, 'text-anchor':'end', fill:m.ens?C.accent:C.text, 'font-size':'11', 'font-weight':m.ens?'700':'500', 'font-family':SANS });
+    const y = padT + i * (bh + gap);
+    const w = m.f1 * barW;
+    // Bar background track
+    svg.append(svgEl('rect', { x:padL, y, width:barW, height:bh, fill:C.bgSofter, rx:'3' }));
+    // Value bar
+    svg.append(svgEl('rect', { x:padL, y, width:w.toFixed(1), height:bh, fill:m.ens ? C.accent : C.navy, rx:'3' }));
+    // Label
+    const nm = svgEl('text', { x:padL-10, y:y+bh/2+4, 'text-anchor':'end', fill:m.ens?C.accent:C.text, 'font-size':'12', 'font-weight':m.ens?'700':'400', 'font-family':SANS });
     nm.textContent = m.name; svg.append(nm);
-    svg.append(svgEl('rect', { x:padL, y, width:w.toFixed(1), height:bh, fill:m.ens?C.accent:C.navy }));
-    svgText(svg, padL+w+6, y+bh/2+4, m.f1.toFixed(2), { mono:true });
+    // Value
+    svgText(svg, padL + w + 7, y + bh/2 + 4, m.f1.toFixed(2), { mono:true, size:'11', fill: m.ens ? C.accent : C.textMuted });
   });
 
-  svgText(svg, padL+(W-padL-padR)/2, H-6, 'F1 Score (test set)', { anchor:'middle', mono:true });
+  svgText(svg, padL + barW/2, H - 4, 'F1 Score (test set)', { anchor:'middle', mono:true, size:'10', fill:C.textDim });
 }
 
 // ── Page 3 — Feature bars ──────────────────────────────────────────────────────
@@ -628,8 +637,23 @@ async function apiFetch(path) {
 }
 
 // ── Init ───────────────────────────────────────────────────────────────────────
+function initTheme() {
+  const btn = document.getElementById('theme-toggle');
+  const saved = localStorage.getItem('theme') ?? 'dark';
+  document.documentElement.dataset.theme = saved;
+  btn.textContent = saved === 'dark' ? '☀' : '☾';
+
+  btn?.addEventListener('click', () => {
+    const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+    document.documentElement.dataset.theme = next;
+    localStorage.setItem('theme', next);
+    btn.textContent = next === 'dark' ? '☀' : '☾';
+  });
+}
+
 async function init() {
   initNav();
+  initTheme();
   initChartInteraction();
 
   const [histRes, predRes, metricsRes] = await Promise.all([

@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>MSFT Predictor</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 21 21'%3E%3Crect x='0' y='0' width='10' height='10' fill='%23F25022'/%3E%3Crect x='11' y='0' width='10' height='10' fill='%237FBA00'/%3E%3Crect x='0' y='11' width='10' height='10' fill='%2300A4EF'/%3E%3Crect x='11' y='11' width='10' height='10' fill='%23FFB900'/%3E%3C/svg%3E" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -11,43 +12,32 @@
 </head>
 <body>
 
-  <!-- ── Sidebar ────────────────────────────────────────────────────────────── -->
-  <aside class="sidebar">
-    <div class="sidebar-logo-block">
-      <div class="logo-icon-wrap">↗</div>
-      <div>
-        <div class="logo-name">MSFT Predictor</div>
-        <div class="logo-ver">v1.0 · stacking</div>
+  <!-- ── Top Navigation ───────────────────────────────────────────────────── -->
+  <header class="topnav">
+    <div class="topnav-logo">
+      <div class="logo-icon-wrap">
+        <svg width="20" height="20" viewBox="0 0 21 21" xmlns="http://www.w3.org/2000/svg">
+          <rect x="0"  y="0"  width="10" height="10" fill="#F25022"/>
+          <rect x="11" y="0"  width="10" height="10" fill="#7FBA00"/>
+          <rect x="0"  y="11" width="10" height="10" fill="#00A4EF"/>
+          <rect x="11" y="11" width="10" height="10" fill="#FFB900"/>
+        </svg>
       </div>
+      <div class="logo-name">MSFT Predictor</div>
     </div>
-    <div class="sidebar-nav-header">Navigation</div>
-    <nav class="sidebar-nav">
-      <a class="nav-link active" data-page="home" href="#">
-        <span class="nav-icon">◐</span>Home / Overview
-      </a>
-      <a class="nav-link" data-page="history" href="#">
-        <span class="nav-icon">◑</span>Historical Analysis
-      </a>
-      <a class="nav-link" data-page="model" href="#">
-        <span class="nav-icon">◒</span>Model Performance
-      </a>
-      <a class="nav-link" data-page="about" href="#">
-        <span class="nav-icon">◓</span>About / Methodology
-      </a>
+    <nav class="topnav-links">
+      <a class="nav-link active" data-page="home" href="#">Home / Overview</a>
+      <a class="nav-link" data-page="history" href="#">Historical Analysis</a>
+      <a class="nav-link" data-page="model" href="#">Model Performance</a>
+      <a class="nav-link" data-page="about" href="#">About / Methodology</a>
     </nav>
-    <div class="sidebar-flex"></div>
-    <div class="sidebar-footer-text">Group 15 · BUas · Block D</div>
-  </aside>
+    <div class="topnav-right">
+      <button class="theme-toggle" id="theme-toggle" title="Toggle light/dark mode">☀</button>
+    </div>
+  </header>
 
   <!-- ── Main ──────────────────────────────────────────────────────────────── -->
   <main class="main-wrapper">
-    <div class="top-bar">
-      <span class="top-bar-left">MSFT Direction Predictor · Group 15</span>
-      <span class="top-bar-right">
-        <span>MSFT · NASDAQ</span>
-      </span>
-    </div>
-
     <div class="page-content">
 
       <!-- PAGE 1 — HOME / OVERVIEW -->
@@ -367,6 +357,6 @@
     </div><!-- /page-content -->
   </main>
 
-  <script src="/static/app.js?v=4"></script>
+  <script src="/static/app.js?v=6"></script>
 </body>
 </html>

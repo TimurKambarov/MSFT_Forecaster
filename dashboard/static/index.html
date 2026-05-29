@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MSFT Predictor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+
+  <!-- ── Sidebar ────────────────────────────────────────────────────────────── -->
+  <aside class="sidebar">
+    <div class="sidebar-logo-block">
+      <div class="logo-icon-wrap">↗</div>
+      <div>
+        <div class="logo-name">MSFT Predictor</div>
+        <div class="logo-ver">v1.0 · stacking</div>
+      </div>
+    </div>
+    <div class="sidebar-nav-header">Navigation</div>
+    <nav class="sidebar-nav">
+      <a class="nav-link active" data-page="home" href="#">
+        <span class="nav-icon">◐</span>Home / Overview
+      </a>
+      <a class="nav-link" data-page="history" href="#">
+        <span class="nav-icon">◑</span>Historical Analysis
+      </a>
+      <a class="nav-link" data-page="model" href="#">
+        <span class="nav-icon">◒</span>Model Performance
+      </a>
+      <a class="nav-link" data-page="about" href="#">
+        <span class="nav-icon">◓</span>About / Methodology
+      </a>
+    </nav>
+    <div class="sidebar-flex"></div>
+    <div class="sidebar-status-card">
+      <div class="status-card-label">Data status</div>
+      <div class="status-card-row">
+        <span class="status-dot" id="status-dot"></span>
+        <span class="status-card-text" id="status-card-text">Connecting...</span>
+      </div>
+    </div>
+    <div class="sidebar-footer-text">Group 15 · BUas · Block D</div>
+  </aside>
+
+  <!-- ── Main ──────────────────────────────────────────────────────────────── -->
+  <main class="main-wrapper">
+    <div class="top-bar">
+      <span class="top-bar-left">streamlit · localhost:8501</span>
+      <span class="top-bar-right">
+        <span>MSFT · NASDAQ</span>
+        <span class="topbar-connected" id="topbar-status">● Connected</span>
+        <span>⟳ Rerun</span>
+        <span>⋮</span>
+      </span>
+    </div>
+
+    <div class="page-content">
+
+      <!-- PAGE 1 — HOME / OVERVIEW -->
+      <section class="page" id="page-home">
+        <div class="page-inner">
+          <div class="page-hero">
+            <h1 class="page-h1">Day to Day Stock Price Predictor</h1>
+            <p class="page-lead">Next-day directional prediction for MSFT powered by machine learning.</p>
+          </div>
+
+          <div class="pred-card" id="pred-card">
+            <div class="pred-card-left">
+              <div class="pred-date-label" id="pred-date-label">Tomorrow</div>
+              <div class="pred-circle" id="pred-circle">
+                <div class="pred-circle-inner">
+                  <div class="pred-arrow-icon" id="pred-arrow-icon">↑</div>
+                  <div class="pred-dir-text" id="pred-dir-text">UP</div>
+                </div>
+              </div>
+              <div class="pred-conf-block">
+                <div class="pred-conf-label">Model confidence</div>
+                <div class="pred-conf-value"><span id="pred-conf-num">67</span><span class="pred-conf-pct-sym">%</span></div>
+                <div class="conf-bar-bg"><div class="conf-bar-fill" id="conf-bar-fill" style="width:67%"></div></div>
+              </div>
+            </div>
+            <div class="pred-card-right">
+              <div class="ensemble-label">Ensemble breakdown</div>
+              <div class="ensemble-rows" id="ensemble-rows"></div>
+              <div class="pred-btns">
+                <button class="btn btn-primary">View prediction details →</button>
+                <button class="btn">Download report (CSV)</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="tiles-row">
+            <div class="tile">
+              <div class="tile-label">Last Close Price</div>
+              <div class="tile-val tile-mono" id="tile-close">$–</div>
+              <div class="tile-sub" id="tile-close-sub">–</div>
+            </div>
+            <div class="tile">
+              <div class="tile-label">Prediction Date</div>
+              <div class="tile-val" id="tile-pred-date">–</div>
+              <div class="tile-sub">Next trading session</div>
+            </div>
+            <div class="tile">
+              <div class="tile-label">Model Used</div>
+              <div class="tile-val tile-val-sm" id="tile-model-name">Stacking Ensemble</div>
+              <div class="tile-sub">RF + XGB + LSTM → Logistic meta</div>
+            </div>
+          </div>
+
+          <div class="chart-block">
+            <div class="chart-block-head">
+              <div>
+                <div class="chart-block-title">MSFT · Last 30 trading days</div>
+                <div class="chart-block-sub">Close price · USD · with next-day prediction annotated</div>
+              </div>
+              <div class="period-btns">
+                <button class="period-btn">1W</button>
+                <button class="period-btn period-active">1M</button>
+                <button class="period-btn">3M</button>
+                <button class="period-btn">YTD</button>
+                <button class="period-btn">1Y</button>
+              </div>
+            </div>
+            <svg id="svg-line30" class="svg-full" viewBox="0 0 1080 210" preserveAspectRatio="none" style="height:210px"></svg>
+          </div>
+
+          <div class="disclaimer-bar">
+            <span class="disclaimer-icon">⚠ DISCLAIMER</span>
+            <span class="disclaimer-text">This tool is for educational purposes only and does not constitute financial advice.</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- PAGE 2 — HISTORICAL ANALYSIS -->
+      <section class="page page-hidden" id="page-history">
+        <div class="page-inner">
+          <div class="section-head">
+            <div class="page-h1">Historical Price Analysis</div>
+            <div class="page-lead">Explore MSFT closing price and overlay macro indicators.</div>
+          </div>
+
+          <div class="date-range-bar">
+            <div class="dr-input-group">
+              <span class="dr-label">Start date</span>
+              <div class="dr-input">2024-11-13 <span class="dr-arrow">▾</span></div>
+            </div>
+            <div class="dr-input-group">
+              <span class="dr-label">End date</span>
+              <div class="dr-input">2025-02-13 <span class="dr-arrow">▾</span></div>
+            </div>
+            <div class="dr-spacer"></div>
+            <div class="dr-btns">
+              <button class="btn">Reset</button>
+              <button class="btn btn-primary">Apply</button>
+            </div>
+          </div>
+
+          <div class="chart-block">
+            <div class="chart-block-head">
+              <div>
+                <div class="chart-block-title">MSFT Closing Price · Historical</div>
+                <div class="chart-block-sub">Toggle overlays to compare with macro indicators</div>
+              </div>
+              <div class="overlay-toggles" id="overlay-toggles"></div>
+            </div>
+            <svg id="svg-history" class="svg-full" viewBox="0 0 1080 300" preserveAspectRatio="none" style="height:300px"></svg>
+          </div>
+
+          <div class="split-row">
+            <div class="chart-block split-flex">
+              <div class="chart-block-head">
+                <div>
+                  <div class="chart-block-title">Daily Return %</div>
+                  <div class="chart-block-sub">
+                    <span style="color:#009FFD">■ positive</span>&nbsp;·&nbsp;<span style="color:#DBD56E">■ negative</span>
+                  </div>
+                </div>
+                <span class="text-dim mono-font" style="font-size:10px">last 60 sessions</span>
+              </div>
+              <svg id="svg-returns" class="svg-full" viewBox="0 0 760 150" preserveAspectRatio="none" style="height:150px"></svg>
+            </div>
+            <div class="chart-block stats-block">
+              <div class="chart-block-title" style="margin-bottom:12px">Summary Statistics</div>
+              <div id="summary-stats"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- PAGE 3 — MODEL PERFORMANCE -->
+      <section class="page page-hidden" id="page-model">
+        <div class="page-inner page-inner-scroll">
+          <div class="section-head section-head-flex">
+            <div>
+              <div class="page-h1">Model Performance</div>
+              <div class="page-lead">Stacking ensemble · evaluated on test set Feb 2023 – Feb 2025 (380 trading days)</div>
+            </div>
+            <div class="section-head-inputs">
+              <div class="dr-input-group">
+                <span class="dr-label">Model</span>
+                <div class="dr-input" style="width:180px">Stacking Ensemble <span class="dr-arrow">▾</span></div>
+              </div>
+              <div class="dr-input-group">
+                <span class="dr-label">Test window</span>
+                <div class="dr-input" style="width:210px">Feb 23 – Feb 25 <span class="dr-arrow">▾</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="metric-tiles-row">
+            <div class="tile big-tile">
+              <div class="tile-label">Accuracy</div>
+              <div class="tile-val tile-val-big tile-mono tile-accent" id="m-accuracy">0.79</div>
+              <div class="tile-sub">301 / 380 correct</div>
+            </div>
+            <div class="tile big-tile">
+              <div class="tile-label">Precision</div>
+              <div class="tile-val tile-val-big tile-mono" id="m-precision">0.81</div>
+              <div class="tile-sub">True UP / predicted UP</div>
+            </div>
+            <div class="tile big-tile">
+              <div class="tile-label">Recall</div>
+              <div class="tile-val tile-val-big tile-mono" id="m-recall">0.80</div>
+              <div class="tile-sub">True UP / actual UP</div>
+            </div>
+            <div class="tile big-tile">
+              <div class="tile-label">F1 Score</div>
+              <div class="tile-val tile-val-big tile-mono tile-accent" id="m-f1">0.79</div>
+              <div class="tile-sub">harmonic mean</div>
+            </div>
+          </div>
+
+          <div class="split-row">
+            <div class="chart-block cm-block">
+              <div class="chart-block-title">Confusion Matrix</div>
+              <div class="chart-block-sub" style="margin-bottom:8px">Counts on the held-out test set</div>
+              <svg id="svg-confusion" viewBox="0 0 380 240" width="380" height="240"></svg>
+              <div class="cm-legend">
+                <span>TN True Negative</span>
+                <span>FP False Positive</span>
+                <span>FN False Negative</span>
+                <span>TP True Positive</span>
+              </div>
+            </div>
+            <div class="chart-block split-flex">
+              <div class="chart-block-title">Model Comparison · F1 Score</div>
+              <div class="chart-block-sub" style="margin-bottom:8px">Stacking ensemble (highlighted) outperforms each base model individually.</div>
+              <svg id="svg-model-compare" viewBox="0 0 560 220" width="100%" height="220"></svg>
+            </div>
+          </div>
+
+          <div class="chart-block">
+            <div class="feat-header">
+              <div style="display:flex;align-items:center;gap:8px">
+                <span style="color:#009FFD;font-family:'JetBrains Mono',monospace;font-size:13px">▼</span>
+                <div>
+                  <div class="chart-block-title">Feature Importance</div>
+                  <div class="chart-block-sub">Top 10 features ranked by XGBoost gain</div>
+                </div>
+              </div>
+              <button class="btn btn-small">Toggle source: XGBoost ▾</button>
+            </div>
+            <div style="margin-top:14px;border-top:1px solid #2F3236;padding-top:14px">
+              <svg id="svg-feature-bars" viewBox="0 0 720 260" width="100%" height="260"></svg>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- PAGE 4 — ABOUT / METHODOLOGY -->
+      <section class="page page-hidden" id="page-about">
+        <div class="page-inner page-inner-scroll">
+          <div class="section-head">
+            <div class="page-h1">About &amp; Methodology</div>
+            <div class="page-lead">How the prediction is made, what data feeds it, and who built it.</div>
+          </div>
+
+          <div class="card-block">
+            <p class="about-text">
+              The <strong style="color:#fff">Day to Day Stock Price Predictor</strong> estimates whether
+              Microsoft's (MSFT) closing price will move <span class="accent-text">up</span> or
+              <span class="amber-text"> down</span> on the next trading day.
+              It combines three machine-learning models — a Random Forest, an XGBoost classifier, and an LSTM
+              neural network — into a <strong style="color:#fff">stacking ensemble</strong> that learns when
+              each underlying model is most trustworthy. Inputs include MSFT daily prices and three macro signals
+              (Gold, Crude Oil, and the VIX volatility index). The dashboard is built for retail investors who
+              want a simple directional signal without wading through code or formulas.
+            </p>
+          </div>
+
+          <div class="card-block">
+            <div class="chart-block-title" style="margin-bottom:12px">Pipeline</div>
+            <div class="pipeline-row">
+              <div class="pipeline-box"><div class="pipeline-step">01 · Source</div><div class="pipeline-name">CSV · yfinance</div></div>
+              <div class="pipeline-arrow">→</div>
+              <div class="pipeline-box"><div class="pipeline-step">02 · Ingest</div><div class="pipeline-name">Ingestion</div></div>
+              <div class="pipeline-arrow">→</div>
+              <div class="pipeline-box"><div class="pipeline-step">03 · Clean</div><div class="pipeline-name">Preprocessing</div></div>
+              <div class="pipeline-arrow">→</div>
+              <div class="pipeline-box"><div class="pipeline-step">04 · Train</div><div class="pipeline-name">ML Models</div></div>
+              <div class="pipeline-arrow">→</div>
+              <div class="pipeline-box pipeline-box-accent"><div class="pipeline-step pipeline-step-accent">05 · Predict</div><div class="pipeline-name">Prediction</div></div>
+              <div class="pipeline-arrow">→</div>
+              <div class="pipeline-box pipeline-box-accent"><div class="pipeline-step pipeline-step-accent">06 · Serve</div><div class="pipeline-name">Dashboard</div></div>
+            </div>
+            <div class="pipeline-note">Daily cron · 09:30 ET · before market open</div>
+          </div>
+
+          <div class="card-block">
+            <div class="chart-block-title" style="margin-bottom:12px">Data Sources</div>
+            <table class="data-sources-table">
+              <thead>
+                <tr><th>Asset</th><th>Source</th><th>Format</th><th>Update Frequency</th></tr>
+              </thead>
+              <tbody>
+                <tr><td class="td-accent td-mono">MSFT</td><td>Yahoo Finance (yfinance API)</td><td>CSV / DataFrame</td><td>Daily · post-close 16:00 ET</td></tr>
+                <tr><td class="td-accent td-mono">Gold (GLD)</td><td>Yahoo Finance (yfinance API)</td><td>CSV / DataFrame</td><td>Daily · post-close 16:00 ET</td></tr>
+                <tr><td class="td-accent td-mono">Crude Oil (CL=F)</td><td>Yahoo Finance (yfinance API)</td><td>CSV / DataFrame</td><td>Daily · post-close 17:00 ET</td></tr>
+                <tr><td class="td-accent td-mono">VIX (^VIX)</td><td>CBOE via yfinance</td><td>CSV / DataFrame</td><td>Daily · post-close 16:15 ET</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="team-credits">
+            <div>
+              <div class="team-built-label">Built by</div>
+              <div class="team-name">Group 15 · Block D 2025–2026</div>
+              <div class="team-org">Breda University of Applied Sciences · Data Science &amp; AI</div>
+            </div>
+            <div class="team-roles-row">
+              <div class="role-box"><div class="role-avatar">●</div><div class="role-name">Ingestion</div></div>
+              <div class="role-box"><div class="role-avatar">●</div><div class="role-name">Modeling</div></div>
+              <div class="role-box"><div class="role-avatar">●</div><div class="role-name">Frontend</div></div>
+              <div class="role-box"><div class="role-avatar">●</div><div class="role-name">Docs</div></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div><!-- /page-content -->
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

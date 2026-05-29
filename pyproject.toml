@@ -3,7 +3,7 @@ name = "2025-26d-fai1-adsai-group-15"
 version = "0.1.0"
 description = ""
 authors = [
-    {name = "LucandenDekker251285",email = "251285@buas.nl"}
+    {name = "LucandenDekker251285",email = "251285@buas.nl"},
     {name = "Gergely Gádor", email = "250713@buas.nl"}
 ]
 readme = "README.md"

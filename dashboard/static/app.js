@@ -100,6 +100,7 @@ const FEATURE_IMPORTANCE = [
 // ── State ──────────────────────────────────────────────────────────────────────
 let overlayState = { msft: true, gold: true, oil: true, vix: false };
 let historyData  = [];
+let filteredData = [];
 
 // ── Navigation ─────────────────────────────────────────────────────────────────
 function initNav() {
@@ -109,6 +110,40 @@ function initNav() {
       navigateTo(link.dataset.page);
     });
   });
+}
+
+function initDatePicker() {
+  const startEl = document.getElementById('date-start');
+  const endEl   = document.getElementById('date-end');
+  const applyEl = document.getElementById('btn-apply');
+  const resetEl = document.getElementById('btn-reset');
+  if (!startEl || !endEl) return;
+
+  // Set defaults to full range of loaded data
+  function setDefaults() {
+    if (!historyData.length) return;
+    startEl.value = historyData.at(0).date?.slice(0, 10) ?? '';
+    endEl.value   = historyData.at(-1).date?.slice(0, 10) ?? '';
+  }
+
+  function applyFilter() {
+    const s = startEl.value, e = endEl.value;
+    filteredData = historyData.filter(r => {
+      const d = r.date?.slice(0, 10) ?? '';
+      return (!s || d >= s) && (!e || d <= e);
+    });
+    if (!filteredData.length) filteredData = historyData;
+    renderHistoryChart(filteredData, overlayState);
+    renderOverlayToggles();
+    renderReturns(filteredData);
+    renderSummaryStats(filteredData);
+  }
+
+  applyEl?.addEventListener('click', applyFilter);
+  resetEl?.addEventListener('click', () => { setDefaults(); applyFilter(); });
+
+  // Expose so renderAll can call it after data loads
+  window._datePickerSetDefaults = setDefaults;
 }
 
 function navigateTo(pageId) {
@@ -493,15 +528,17 @@ function setStatus(mode) {
 
 // ── Full render ────────────────────────────────────────────────────────────────
 function renderAll(data, prediction, metrics) {
-  historyData = data;
+  historyData  = data;
+  filteredData = data;
   const latest = data.at(-1), prev = data.at(-2);
   renderPrediction(prediction);
   renderKPIs(latest, prev);
   renderLine30(data);
-  renderHistoryChart(data, overlayState);
+  renderHistoryChart(filteredData, overlayState);
   renderOverlayToggles();
-  renderReturns(data);
-  renderSummaryStats(data);
+  renderReturns(filteredData);
+  renderSummaryStats(filteredData);
+  window._datePickerSetDefaults?.();
   renderConfusionMatrix();
   renderModelCompare();
   renderFeatureBars();
@@ -520,6 +557,7 @@ async function apiFetch(path) {
 // ── Init ───────────────────────────────────────────────────────────────────────
 async function init() {
   initNav();
+  initDatePicker();
 
   try {
     const [histRes, predRes, metricsRes] = await Promise.all([

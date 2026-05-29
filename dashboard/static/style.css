@@ -545,6 +545,20 @@ body { display: flex; overflow: hidden; }
 }
 
 .dr-arrow { color: var(--text-dim); font-size: 10px; }
+
+.dr-input-native {
+  padding: 8px 10px;
+  background: var(--bg-soft);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  font-size: 13px;
+  font-family: var(--mono);
+  color: var(--text);
+  min-width: 140px;
+  cursor: pointer;
+  color-scheme: dark;
+}
+.dr-input-native:focus { outline: none; border-color: var(--accent); }
 .dr-spacer { flex: 1; }
 .dr-btns { display: flex; gap: 8px; }
 

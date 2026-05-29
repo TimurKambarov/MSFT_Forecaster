@@ -1,31 +1,106 @@
 """
-Build db/stocks.db from data/processed/msft_merged.csv.
-Run once from the msft-forecaster directory:
+Build db/stocks.db entirely from Yahoo Finance (yfinance).
+Run once from the project root:
     python setup_db.py
+
+All historical data from 2015-01-01 to today is fetched fresh from
+yfinance so every table uses a single consistent data source.
 """
 
+import logging
 import sqlite3
 from pathlib import Path
+
 import pandas as pd
+import yfinance as yf
+
+logging.basicConfig(level=logging.INFO, format="%(levelname)s  %(message)s")
+logger = logging.getLogger(__name__)
 
 BASE_DIR = Path(__file__).parent
-CSV_PATH = BASE_DIR / "data" / "processed" / "msft_merged.csv"
 DB_PATH = BASE_DIR / "db" / "stocks.db"
+START = "2015-01-01"
 
-df = pd.read_csv(CSV_PATH)
-df.columns = [c.lower() for c in df.columns]
-df = df.rename(columns={"date": "date"})
-df["date"] = pd.to_datetime(df["date"]).dt.strftime("%Y-%m-%d")
+TICKERS = {
+    "MSFT": "msft_daily",
+    "GC=F": "gold_prices",
+    "CL=F": "oil_prices",
+    "^VIX": "vix_data",
+    "SPY": "spy_data",
+}
 
-conn = sqlite3.connect(str(DB_PATH))
+COL_MAP = {
+    "msft_daily": {
+        "Open": "open",
+        "High": "high",
+        "Low": "low",
+        "Close": "close",
+        "Volume": "volume",
+    },
+    "gold_prices": {"Close": "gold_close"},
+    "oil_prices": {"Close": "oil_close"},
+    "vix_data": {"Close": "vix"},
+    "spy_data": {"Close": "spy_close"},
+}
 
-df[["date", "open", "high", "low", "close", "volume"]].to_sql(
-    "msft_daily", conn, if_exists="replace", index=False
-)
-df[["date", "gold_close"]].to_sql("gold_prices", conn, if_exists="replace", index=False)
-df[["date", "oil_close"]].to_sql("oil_prices", conn, if_exists="replace", index=False)
-df[["date", "vix"]].to_sql("vix_data", conn, if_exists="replace", index=False)
 
-conn.commit()
-conn.close()
-print(f"Database created at {DB_PATH} ({len(df)} rows)")
+def fetch(ticker: str) -> pd.DataFrame:
+    """Download full history for a ticker from yfinance."""
+    logger.info("Fetching %s from %s", ticker, START)
+    df = yf.download(ticker, start=START, auto_adjust=True, progress=False)
+    if isinstance(df.columns, pd.MultiIndex):
+        df.columns = df.columns.get_level_values(0)
+    df = df.reset_index()
+    df = df.rename(columns={"Date": "date"})
+    df["date"] = pd.to_datetime(df["date"]).dt.strftime("%Y-%m-%d")
+    return df
+
+
+def build():
+    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(str(DB_PATH))
+
+    for ticker, table in TICKERS.items():
+        df = fetch(ticker)
+        col_map = COL_MAP[table]
+        keep = ["date"] + list(col_map.keys())
+        df = df[[c for c in keep if c in df.columns]].rename(columns=col_map)
+        df.to_sql(table, conn, if_exists="replace", index=False)
+        logger.info("%s → %s (%d rows)", ticker, table, len(df))
+
+    # Model metrics from training notebooks
+    metrics = pd.DataFrame(
+        [
+            {
+                "model": "Logistic Regression",
+                "accuracy": 0.5136,
+                "precision": 0.5133,
+                "recall": 0.5136,
+                "f1": 0.5134,
+            },
+            {
+                "model": "Random Forest",
+                "accuracy": 0.5137,
+                "precision": 0.5104,
+                "recall": 0.5137,
+                "f1": 0.5058,
+            },
+            {
+                "model": "XGBoost",
+                "accuracy": 0.5223,
+                "precision": 0.5272,
+                "recall": 0.5223,
+                "f1": 0.5222,
+            },
+        ]
+    )
+    metrics.to_sql("model_metrics", conn, if_exists="replace", index=False)
+    logger.info("model_metrics written")
+
+    conn.commit()
+    conn.close()
+    logger.info("Database ready at %s", DB_PATH)
+
+
+if __name__ == "__main__":
+    build()

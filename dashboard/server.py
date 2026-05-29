@@ -42,22 +42,20 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s  %(message)s")
 logger = logging.getLogger(__name__)
 
 FEATURE_COLS = [
-    "open",
-    "high",
-    "low",
-    "close",
-    "volume",
-    "gold_close",
-    "oil_close",
-    "vix",
-    "lag_1",
-    "lag_2",
-    "rolling_5",
-    "rolling_10",
+    "rsi_14",
+    "momentum_5",
+    "momentum_10",
     "daily_return",
-    "price_range",
-    "gold_return",
-    "oil_return",
+    "price_range_pct",
+    "close_to_sma5_pct",
+    "close_to_sma10_pct",
+    "sma_crossover",
+    "rolling_std_5",
+    "volume_ratio",
+    "lag_gold_return",
+    "lag_oil_return",
+    "lag_vix_1",
+    "lag_spy_return",
 ]
 
 
@@ -87,8 +85,19 @@ def load_best_model():
     return None, None, None
 
 
-def build_features(conn, n_rows: int = 20) -> pd.DataFrame:
-    """Merge the last n_rows of all tables and engineer features."""
+def _rsi(series: pd.Series, window: int = 14) -> pd.Series:
+    """Wilder's RSI."""
+    delta = series.diff()
+    gain = delta.clip(lower=0)
+    loss = -delta.clip(upper=0)
+    avg_gain = gain.ewm(com=window - 1, min_periods=window).mean()
+    avg_loss = loss.ewm(com=window - 1, min_periods=window).mean()
+    rs = avg_gain / avg_loss
+    return 100 - (100 / (1 + rs))
+
+
+def build_features(conn, n_rows: int = 60) -> pd.DataFrame:
+    """Merge the last n_rows of all tables and engineer features matching training."""
     msft = pd.read_sql(
         f"SELECT * FROM msft_daily ORDER BY date DESC LIMIT {n_rows}", conn
     ).sort_values("date")
@@ -101,22 +110,38 @@ def build_features(conn, n_rows: int = 20) -> pd.DataFrame:
     vix = pd.read_sql(
         f"SELECT * FROM vix_data ORDER BY date DESC LIMIT {n_rows}", conn
     ).sort_values("date")
+    spy = pd.read_sql(
+        f"SELECT * FROM spy_data ORDER BY date DESC LIMIT {n_rows}", conn
+    ).sort_values("date")
 
     df = (
         msft.merge(gold, on="date", how="left")
         .merge(oil, on="date", how="left")
         .merge(vix, on="date", how="left")
+        .merge(spy, on="date", how="left")
     )
-    df[["gold_close", "oil_close", "vix"]] = df[["gold_close", "oil_close", "vix"]].ffill()
+    df[["gold_close", "oil_close", "vix", "spy_close"]] = df[
+        ["gold_close", "oil_close", "vix", "spy_close"]
+    ].ffill()
 
-    df["lag_1"] = df["close"].shift(1)
-    df["lag_2"] = df["close"].shift(2)
-    df["rolling_5"] = df["close"].rolling(5).mean()
-    df["rolling_10"] = df["close"].rolling(10).mean()
-    df["daily_return"] = df["close"].pct_change()
-    df["price_range"] = df["high"] - df["low"]
-    df["gold_return"] = df["gold_close"].pct_change()
-    df["oil_return"] = df["oil_close"].pct_change()
+    close = df["close"]
+    sma5 = close.rolling(5).mean()
+    sma10 = close.rolling(10).mean()
+
+    df["rsi_14"] = _rsi(close)
+    df["daily_return"] = close.pct_change() * 100
+    df["momentum_5"] = close.pct_change(5) * 100
+    df["momentum_10"] = close.pct_change(10) * 100
+    df["close_to_sma5_pct"] = (close - sma5) / sma5 * 100
+    df["close_to_sma10_pct"] = (close - sma10) / sma10 * 100
+    df["sma_crossover"] = sma5 / sma10
+    df["price_range_pct"] = (df["high"] - df["low"]) / close * 100
+    df["rolling_std_5"] = close.rolling(5).std()
+    df["volume_ratio"] = df["volume"] / df["volume"].rolling(20).mean()
+    df["lag_gold_return"] = df["gold_close"].pct_change().shift(1) * 100
+    df["lag_oil_return"] = df["oil_close"].pct_change().shift(1) * 100
+    df["lag_vix_1"] = df["vix"].shift(1)
+    df["lag_spy_return"] = df["spy_close"].pct_change().shift(1) * 100
 
     return df.dropna().reset_index(drop=True)
 
@@ -226,24 +251,46 @@ def indicators_history():
 def prediction_latest():
     try:
         conn = get_conn()
-        df = build_features(conn, n_rows=20)
+
+        # Read from predictions table first (written by predict.py)
+        tables = [
+            r[0]
+            for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
+        ]
+        if "predictions" in tables:
+            row = conn.execute(
+                "SELECT p.*, m.close FROM predictions p "
+                "JOIN msft_daily m ON p.date = m.date "
+                "ORDER BY p.date DESC LIMIT 1"
+            ).fetchone()
+            if row:
+                conn.close()
+                return jsonify(
+                    {
+                        "status": "ok",
+                        "data": {
+                            "date": row["date"],
+                            "direction": "UP" if row["predicted_direction"] == 1 else "DOWN",
+                            "prediction": row["predicted_direction"],
+                            "probability": round(row["confidence"] * 100, 1),
+                            "close": row["close"],
+                            "model_name": row["model_used"],
+                        },
+                    }
+                )
+
+        # Fallback: compute on-the-fly if predictions table is empty
+        df = build_features(conn, n_rows=60)
         conn.close()
 
         if df.empty:
-            return (
-                jsonify({"status": "error", "message": "Niet genoeg data voor voorspelling"}),
-                400,
-            )
+            return jsonify({"status": "error", "message": "Not enough data"}), 400
 
         model, scaler, model_name = load_best_model()
         if model is None:
-            return jsonify(
-                {
-                    "status": "model_unavailable",
-                    "message": "Geen getraind model gevonden. Train eerst een model.",
-                    "direction": None,
-                    "probability": None,
-                }
+            return (
+                jsonify({"status": "model_unavailable", "message": "No trained model found."}),
+                503,
             )
 
         X = scaler.transform(df[FEATURE_COLS].iloc[[-1]])
@@ -264,7 +311,7 @@ def prediction_latest():
             }
         )
     except Exception as e:
-        logger.error(f"prediction_latest: {e}")
+        logger.error("prediction_latest: %s", e)
         return jsonify({"status": "error", "message": str(e)}), 500
 
 

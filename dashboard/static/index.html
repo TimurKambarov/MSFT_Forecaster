@@ -7,8 +7,8 @@
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 21 21'%3E%3Crect x='0' y='0' width='10' height='10' fill='%23F25022'/%3E%3Crect x='11' y='0' width='10' height='10' fill='%237FBA00'/%3E%3Crect x='0' y='11' width='10' height='10' fill='%2300A4EF'/%3E%3Crect x='11' y='11' width='10' height='10' fill='%23FFB900'/%3E%3C/svg%3E" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css?v=21" />
 </head>
 <body>
 
@@ -33,8 +33,111 @@
     </nav>
     <div class="topnav-right">
       <button class="theme-toggle" id="theme-toggle" title="Toggle light/dark mode">☀</button>
+      <button class="settings-btn" id="settings-btn" title="Settings">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+      </button>
     </div>
   </header>
+
+  <!-- ── Settings panel ────────────────────────────────────────────────────── -->
+  <div class="settings-overlay" id="settings-overlay">
+    <div class="settings-panel">
+      <div class="settings-header">
+        <span class="settings-title" data-i18n="settings">Settings</span>
+        <button class="settings-close" data-close-overlay="settings-overlay">✕</button>
+      </div>
+      <div class="settings-body">
+
+        <div class="settings-section">
+          <div class="settings-section-label" data-i18n="display">Display</div>
+
+          <div class="settings-row">
+            <div class="settings-row-label" data-i18n="currency">Currency</div>
+            <div class="settings-row-note" data-i18n="currency-note">Display only — no live conversion</div>
+            <div class="btn-group" id="setting-currency">
+              <button class="btn-group-item active" data-val="USD">$ USD</button>
+              <button class="btn-group-item" data-val="EUR">€ EUR</button>
+              <button class="btn-group-item" data-val="GBP">£ GBP</button>
+              <button class="btn-group-item" data-val="JPY">¥ JPY</button>
+            </div>
+          </div>
+
+          <div class="settings-row">
+            <div class="settings-row-label" data-i18n="language">Language</div>
+            <select class="settings-select" id="setting-language">
+              <option value="en">English</option>
+              <option value="nl">Nederlands</option>
+              <option value="de">Deutsch</option>
+              <option value="fr">Français</option>
+              <option value="es">Español</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <div class="settings-section-label" data-i18n="charts">Charts</div>
+
+          <div class="settings-row">
+            <div class="settings-row-label" data-i18n="default-period">Default period</div>
+            <div class="btn-group" id="setting-period">
+              <button class="btn-group-item" data-val="1W">1W</button>
+              <button class="btn-group-item active" data-val="1M">1M</button>
+              <button class="btn-group-item" data-val="3M">3M</button>
+              <button class="btn-group-item" data-val="YTD">YTD</button>
+              <button class="btn-group-item" data-val="1Y">1Y</button>
+            </div>
+          </div>
+
+          <div class="settings-row">
+            <div class="settings-row-label" data-i18n="chart-style">Chart style</div>
+            <div class="btn-group" id="setting-chart-style">
+              <button class="btn-group-item active" data-val="area" data-i18n="area">Area</button>
+              <button class="btn-group-item" data-val="line" data-i18n="line">Line only</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <div class="settings-section-label" data-i18n="predictions">Predictions</div>
+
+          <div class="settings-row settings-row-inline">
+            <div>
+              <div class="settings-row-label" data-i18n="show-conf-bar">Show confidence bar</div>
+            </div>
+            <label class="settings-toggle">
+              <input type="checkbox" id="setting-conf-bar" checked>
+              <span class="settings-toggle-track"><span class="settings-toggle-thumb"></span></span>
+            </label>
+          </div>
+
+          <div class="settings-row settings-row-inline">
+            <div>
+              <div class="settings-row-label" data-i18n="auto-refresh">Auto-refresh data</div>
+              <div class="settings-row-note" data-i18n="auto-refresh-note">Reload predictions every 15 min</div>
+            </div>
+            <label class="settings-toggle">
+              <input type="checkbox" id="setting-auto-refresh">
+              <span class="settings-toggle-track"><span class="settings-toggle-thumb"></span></span>
+            </label>
+          </div>
+
+          <div class="settings-row settings-row-inline">
+            <div>
+              <div class="settings-row-label" data-i18n="show-disclaimer">Show disclaimer</div>
+            </div>
+            <label class="settings-toggle">
+              <input type="checkbox" id="setting-disclaimer" checked>
+              <span class="settings-toggle-track"><span class="settings-toggle-thumb"></span></span>
+            </label>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
 
   <!-- ── Main ──────────────────────────────────────────────────────────────── -->
   <main class="main-wrapper">
@@ -59,16 +162,16 @@
               </div>
               <div class="pred-conf-block">
                 <div class="pred-conf-label">Model confidence</div>
-                <div class="pred-conf-value"><span id="pred-conf-num">67</span><span class="pred-conf-pct-sym">%</span></div>
-                <div class="conf-bar-bg"><div class="conf-bar-fill" id="conf-bar-fill" style="width:67%"></div></div>
+                <div class="pred-conf-value"><span id="pred-conf-num">–</span><span class="pred-conf-pct-sym" id="pred-conf-pct">%</span></div>
+                <div class="conf-bar-bg"><div class="conf-bar-fill" id="conf-bar-fill" style="width:0%"></div></div>
               </div>
             </div>
             <div class="pred-card-right">
               <div class="ensemble-label">Ensemble breakdown</div>
               <div class="ensemble-rows" id="ensemble-rows"></div>
               <div class="pred-btns">
-                <button class="btn btn-primary">View prediction details →</button>
-                <button class="btn">Download report (CSV)</button>
+                <button class="btn btn-primary" id="btn-pred-details">View prediction details</button>
+                <button class="btn" id="btn-download-csv">Download report (CSV)</button>
               </div>
             </div>
           </div>
@@ -98,11 +201,11 @@
                 <div class="chart-block-sub">Close price · USD · with next-day prediction annotated</div>
               </div>
               <div class="period-btns">
-                <button class="period-btn">1W</button>
-                <button class="period-btn period-active">1M</button>
-                <button class="period-btn">3M</button>
-                <button class="period-btn">YTD</button>
-                <button class="period-btn">1Y</button>
+                <button class="period-btn" data-period="1W">1W</button>
+                <button class="period-btn period-active" data-period="1M">1M</button>
+                <button class="period-btn" data-period="3M">3M</button>
+                <button class="period-btn" data-period="YTD">YTD</button>
+                <button class="period-btn" data-period="1Y">1Y</button>
               </div>
             </div>
             <svg id="svg-line30" class="svg-full" viewBox="0 0 1080 210" preserveAspectRatio="none" style="height:210px"></svg>
@@ -128,7 +231,7 @@
             <div class="chart-block-head">
               <div>
                 <div class="chart-block-title">MSFT Closing Price · Historical</div>
-                <div class="chart-block-sub">Toggle overlays to compare with macro indicators</div>
+                <div class="chart-block-sub">% change from period start · all series indexed to 0%</div>
               </div>
               <div class="overlay-toggles" id="overlay-toggles"></div>
             </div>
@@ -215,11 +318,12 @@
             <div class="section-head-inputs">
               <div class="dr-input-group">
                 <span class="dr-label">Model</span>
-                <div class="dr-input" style="width:180px">Stacking Ensemble <span class="dr-arrow">▾</span></div>
-              </div>
-              <div class="dr-input-group">
-                <span class="dr-label">Test window</span>
-                <div class="dr-input" style="width:210px">Feb 23 – Feb 25 <span class="dr-arrow">▾</span></div>
+                <select class="settings-select" id="model-select" style="width:200px">
+                  <option value="stacking">Stacking Ensemble</option>
+                  <option value="xgboost">XGBoost (it3)</option>
+                  <option value="rf">Random Forest (it3)</option>
+                  <option value="lr">Logistic Regression (it3)</option>
+                </select>
               </div>
             </div>
           </div>
@@ -269,7 +373,7 @@
           <div class="chart-block">
             <div class="feat-header">
               <div style="display:flex;align-items:center;gap:8px">
-                <span style="color:#009FFD;font-family:'JetBrains Mono',monospace;font-size:13px">▼</span>
+                <span style="color:#009FFD;font-size:13px">▼</span>
                 <div>
                   <div class="chart-block-title">Feature Importance</div>
                   <div class="chart-block-sub">Top 10 features ranked by XGBoost gain</div>
@@ -294,11 +398,11 @@
 
           <div class="card-block">
             <p class="about-text">
-              The <strong style="color:#fff">Day to Day Stock Price Predictor</strong> estimates whether
+              The <strong>Day to Day Stock Price Predictor</strong> estimates whether
               Microsoft's (MSFT) closing price will move <span class="accent-text">up</span> or
               <span class="amber-text"> down</span> on the next trading day.
               It combines three machine-learning models — a Random Forest, an XGBoost classifier, and an LSTM
-              neural network — into a <strong style="color:#fff">stacking ensemble</strong> that learns when
+              neural network — into a <strong>stacking ensemble</strong> that learns when
               each underlying model is most trustworthy. Inputs include MSFT daily prices and three macro signals
               (Gold, Crude Oil, and the VIX volatility index). The dashboard is built for retail investors who
               want a simple directional signal without wading through code or formulas.
@@ -344,12 +448,6 @@
               <div class="team-name">Group 15 · Block D 2025–2026</div>
               <div class="team-org">Breda University of Applied Sciences · Data Science &amp; AI</div>
             </div>
-            <div class="team-roles-row">
-              <div class="role-box"><div class="role-avatar">●</div><div class="role-name">Ingestion</div></div>
-              <div class="role-box"><div class="role-avatar">●</div><div class="role-name">Modeling</div></div>
-              <div class="role-box"><div class="role-avatar">●</div><div class="role-name">Frontend</div></div>
-              <div class="role-box"><div class="role-avatar">●</div><div class="role-name">Docs</div></div>
-            </div>
           </div>
         </div>
       </section>
@@ -357,6 +455,93 @@
     </div><!-- /page-content -->
   </main>
 
-  <script src="/static/app.js?v=6"></script>
+  <!-- ── Prediction details modal ──────────────────────────────────────────── -->
+  <div class="settings-overlay" id="pred-details-overlay">
+    <div class="settings-panel" style="width:580px">
+      <div class="settings-header">
+        <span class="settings-title">Prediction Details</span>
+        <button class="settings-close" data-close-overlay="pred-details-overlay">✕</button>
+      </div>
+      <div class="settings-body">
+
+        <div class="settings-section">
+          <div class="settings-section-label">Current Prediction</div>
+          <div class="pred-detail-hero" id="pred-detail-hero"></div>
+        </div>
+
+        <div class="settings-section">
+          <div class="settings-section-label">Ensemble Breakdown</div>
+          <div id="pred-detail-ensemble"></div>
+        </div>
+
+        <div class="settings-section">
+          <div class="settings-section-label">Model Info</div>
+          <div class="pred-detail-info" id="pred-detail-info"></div>
+        </div>
+
+        <div class="settings-section">
+          <div class="settings-section-label">Disclaimer</div>
+          <div class="settings-row-note" style="line-height:1.6">This prediction is generated by a machine learning model for educational purposes only. It does not constitute financial advice. Past model performance does not guarantee future results.</div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Download CSV modal ─────────────────────────────────────────────────── -->
+  <div class="settings-overlay" id="csv-overlay">
+    <div class="settings-panel" style="width:520px">
+      <div class="settings-header">
+        <span class="settings-title">Download Report</span>
+        <button class="settings-close" data-close-overlay="csv-overlay">✕</button>
+      </div>
+      <div class="settings-body">
+
+        <div class="settings-section">
+          <div class="settings-section-label">Include in report</div>
+          <div class="settings-row settings-row-inline">
+            <div class="settings-row-label">Historical prices (OHLCV)</div>
+            <label class="settings-toggle"><input type="checkbox" id="csv-prices" checked><span class="settings-toggle-track"><span class="settings-toggle-thumb"></span></span></label>
+          </div>
+          <div class="settings-row settings-row-inline" style="margin-top:10px">
+            <div class="settings-row-label">Macro indicators (Gold, Oil, VIX)</div>
+            <label class="settings-toggle"><input type="checkbox" id="csv-indicators" checked><span class="settings-toggle-track"><span class="settings-toggle-thumb"></span></span></label>
+          </div>
+          <div class="settings-row settings-row-inline" style="margin-top:10px">
+            <div class="settings-row-label">Daily returns (%)</div>
+            <label class="settings-toggle"><input type="checkbox" id="csv-returns"><span class="settings-toggle-track"><span class="settings-toggle-thumb"></span></span></label>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <div class="settings-section-label">Date range</div>
+          <div class="settings-row">
+            <div class="settings-row-label">From</div>
+            <input type="date" class="cal-input" id="csv-date-from" />
+          </div>
+          <div class="settings-row" style="margin-top:10px">
+            <div class="settings-row-label">To</div>
+            <input type="date" class="cal-input" id="csv-date-to" />
+          </div>
+          <div class="settings-row-note" style="margin-top:6px" id="csv-row-count"></div>
+        </div>
+
+        <div class="settings-section">
+          <div class="settings-section-label">Format</div>
+          <div class="btn-group" id="csv-format">
+            <button class="btn-group-item active" data-val="csv">CSV</button>
+            <button class="btn-group-item" data-val="json">JSON</button>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <button class="btn btn-primary" id="csv-download-btn" style="width:100%;justify-content:center">Download</button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/app.js?v=24"></script>
 </body>
 </html>

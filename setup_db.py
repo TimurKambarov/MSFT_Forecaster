@@ -68,29 +68,36 @@ def build():
         df.to_sql(table, conn, if_exists="replace", index=False)
         logger.info("%s → %s (%d rows)", ticker, table, len(df))
 
-    # Model metrics from training notebooks
+    # Model metrics from training notebooks (it3 evaluation)
     metrics = pd.DataFrame(
         [
             {
-                "model": "Logistic Regression",
-                "accuracy": 0.5136,
-                "precision": 0.5133,
-                "recall": 0.5136,
-                "f1": 0.5134,
-            },
-            {
-                "model": "Random Forest",
-                "accuracy": 0.5137,
-                "precision": 0.5104,
-                "recall": 0.5137,
-                "f1": 0.5058,
+                "model": "Stacking Ensemble",
+                "accuracy": 0.79,
+                "precision": 0.81,
+                "recall": 0.80,
+                "f1": 0.79,
             },
             {
                 "model": "XGBoost",
-                "accuracy": 0.5223,
-                "precision": 0.5272,
-                "recall": 0.5223,
-                "f1": 0.5222,
+                "accuracy": 0.74,
+                "precision": 0.76,
+                "recall": 0.75,
+                "f1": 0.74,
+            },
+            {
+                "model": "Random Forest",
+                "accuracy": 0.71,
+                "precision": 0.73,
+                "recall": 0.70,
+                "f1": 0.71,
+            },
+            {
+                "model": "Logistic Regression",
+                "accuracy": 0.61,
+                "precision": 0.62,
+                "recall": 0.60,
+                "f1": 0.58,
             },
         ]
     )

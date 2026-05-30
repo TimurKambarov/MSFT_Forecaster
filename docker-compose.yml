@@ -6,3 +6,4 @@ services:
     volumes:
       - ./db:/app/db
       - ./models:/app/models
+      - ./dashboard/static:/app/dashboard/static

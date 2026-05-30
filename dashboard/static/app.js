@@ -1,22 +1,28 @@
 'use strict';
 
-// ── Design tokens ──────────────────────────────────────────────────────────────
-const C = {
-  bg:        '#232528',
-  bgSoft:    '#2B2D31',
-  bgSofter:  '#34373B',
-  line:      '#3D4045',
-  lineSoft:  '#2F3236',
-  text:      '#FFFFFF',
-  textMuted: '#A8ADB5',
-  textDim:   '#6F7480',
-  accent:    '#009FFD',
-  navy:      '#2A2A72',
-  amber:     '#DBD56E',
-  red:       '#E26A6A',
-};
+// ── Design tokens — read from CSS variables so theme switching works ──────────
 const MONO = '"JetBrains Mono","SF Mono",Menlo,monospace';
-const SANS = '"Inter","Helvetica Neue",Helvetica,Arial,sans-serif';
+const SANS = '"Montserrat","Helvetica Neue",Helvetica,Arial,sans-serif';
+
+function getColors() {
+  const s = getComputedStyle(document.documentElement);
+  const v = n => s.getPropertyValue(n).trim();
+  return {
+    bg:        v('--bg'),
+    bgSoft:    v('--bg-soft'),
+    bgSofter:  v('--bg-softer'),
+    line:      v('--line'),
+    lineSoft:  v('--line-soft'),
+    text:      v('--text'),
+    textMuted: v('--text-muted'),
+    textDim:   v('--text-dim'),
+    accent:    v('--accent'),
+    navy:      v('--navy'),
+    amber:     v('--amber'),
+    red:       v('--red'),
+  };
+}
+let C = getColors();
 
 // ── Sample data (real MSFT + Gold + Oil + VIX, Nov 2024 – Feb 2025) ───────────
 const SAMPLE_HISTORY = [
@@ -97,8 +103,174 @@ const FEATURE_IMPORTANCE = [
   { name: 'ATR_14',          pct: 0.04 },
 ];
 
+// ── Settings ───────────────────────────────────────────────────────────────────
+const CURRENCY_SYMBOLS = { USD: '$', EUR: '€', GBP: '£', JPY: '¥' };
+const FALLBACK_RATES = { USD: 1, EUR: 0.92, GBP: 0.79, JPY: 157 };
+let exchangeRates = { ...FALLBACK_RATES };
+let baseCloseUSD  = null;
+
+async function fetchExchangeRates() {
+  try {
+    const res  = await fetch('https://api.frankfurter.app/latest?from=USD&to=EUR,GBP,JPY');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    if (data.rates?.EUR) {
+      exchangeRates = { USD: 1, ...data.rates };
+      console.log('Live exchange rates loaded:', exchangeRates);
+    }
+  } catch (e) {
+    console.warn('Exchange rate fetch failed, using fallback rates:', e.message);
+    exchangeRates = { ...FALLBACK_RATES };
+  }
+}
+
+const I18N = {
+  en: {
+    settings: 'Settings', display: 'Display', currency: 'Currency',
+    'currency-note': 'Display only — no live conversion',
+    language: 'Language', charts: 'Charts', 'default-period': 'Default period',
+    'chart-style': 'Chart style', area: 'Area', line: 'Line only',
+    predictions: 'Predictions', 'show-conf-bar': 'Show confidence bar',
+    'auto-refresh': 'Auto-refresh data', 'auto-refresh-note': 'Reload predictions every 15 min',
+    'show-disclaimer': 'Show disclaimer',
+    tomorrow: 'Tomorrow', 'model-conf': 'Model confidence', 'ens-label': 'Ensemble breakdown',
+  },
+  nl: {
+    settings: 'Instellingen', display: 'Weergave', currency: 'Valuta',
+    'currency-note': 'Alleen weergave — geen live conversie',
+    language: 'Taal', charts: 'Grafieken', 'default-period': 'Standaard periode',
+    'chart-style': 'Grafiekstijl', area: 'Vlak', line: 'Alleen lijn',
+    predictions: 'Voorspellingen', 'show-conf-bar': 'Betrouwbaarheidsbalk tonen',
+    'auto-refresh': 'Data automatisch verversen', 'auto-refresh-note': 'Herlaad voorspellingen elke 15 min',
+    'show-disclaimer': 'Disclaimer tonen',
+    tomorrow: 'Morgen', 'model-conf': 'Modelbetrouwbaarheid', 'ens-label': 'Ensemble overzicht',
+  },
+  de: {
+    settings: 'Einstellungen', display: 'Anzeige', currency: 'Währung',
+    'currency-note': 'Nur Anzeige — keine Live-Konvertierung',
+    language: 'Sprache', charts: 'Diagramme', 'default-period': 'Standardzeitraum',
+    'chart-style': 'Diagrammstil', area: 'Fläche', line: 'Nur Linie',
+    predictions: 'Vorhersagen', 'show-conf-bar': 'Konfidenzbalken anzeigen',
+    'auto-refresh': 'Daten automatisch aktualisieren', 'auto-refresh-note': 'Vorhersagen alle 15 Min neu laden',
+    'show-disclaimer': 'Haftungsausschluss anzeigen',
+    tomorrow: 'Morgen', 'model-conf': 'Modellkonfidenz', 'ens-label': 'Ensemble-Übersicht',
+  },
+  fr: {
+    settings: 'Paramètres', display: 'Affichage', currency: 'Devise',
+    'currency-note': 'Affichage uniquement — pas de conversion en direct',
+    language: 'Langue', charts: 'Graphiques', 'default-period': 'Période par défaut',
+    'chart-style': 'Style de graphique', area: 'Zone', line: 'Ligne seulement',
+    predictions: 'Prédictions', 'show-conf-bar': 'Afficher la barre de confiance',
+    'auto-refresh': 'Actualisation automatique', 'auto-refresh-note': 'Recharger les prédictions toutes les 15 min',
+    'show-disclaimer': 'Afficher l\'avertissement',
+    tomorrow: 'Demain', 'model-conf': 'Confiance du modèle', 'ens-label': 'Détail ensemble',
+  },
+  es: {
+    settings: 'Configuración', display: 'Visualización', currency: 'Moneda',
+    'currency-note': 'Solo visualización — sin conversión en vivo',
+    language: 'Idioma', charts: 'Gráficos', 'default-period': 'Período predeterminado',
+    'chart-style': 'Estilo de gráfico', area: 'Área', line: 'Solo línea',
+    predictions: 'Predicciones', 'show-conf-bar': 'Mostrar barra de confianza',
+    'auto-refresh': 'Actualización automática', 'auto-refresh-note': 'Recargar predicciones cada 15 min',
+    'show-disclaimer': 'Mostrar descargo de responsabilidad',
+    tomorrow: 'Mañana', 'model-conf': 'Confianza del modelo', 'ens-label': 'Desglose del ensemble',
+  },
+};
+
+const DEFAULT_SETTINGS = {
+  currency: 'USD', language: 'en', defaultPeriod: '1M',
+  chartStyle: 'area', showConfBar: true, autoRefresh: false, showDisclaimer: true,
+};
+let appSettings = { ...DEFAULT_SETTINGS };
+
+function loadSettings() {
+  try { appSettings = { ...DEFAULT_SETTINGS, ...JSON.parse(localStorage.getItem('appSettings') || '{}') }; }
+  catch { appSettings = { ...DEFAULT_SETTINGS }; }
+}
+function saveSettings() { localStorage.setItem('appSettings', JSON.stringify(appSettings)); }
+
+function applyI18n() {
+  const L = I18N[appSettings.language] || I18N.en;
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.dataset.i18n;
+    if (L[key]) el.textContent = L[key];
+  });
+  const confLabel = document.querySelector('.pred-conf-label');
+  if (confLabel) confLabel.textContent = L['model-conf'];
+  const ensLabel = document.querySelector('.ensemble-label');
+  if (ensLabel) ensLabel.textContent = L['ens-label'];
+}
+
+function applySettings() {
+  applyI18n();
+  const sym  = CURRENCY_SYMBOLS[appSettings.currency] || '$';
+  const rate = exchangeRates[appSettings.currency] || 1;
+  const decimals = appSettings.currency === 'JPY' ? 0 : 2;
+  const closeEl = document.getElementById('tile-close');
+  if (closeEl && baseCloseUSD !== null) closeEl.textContent = `${sym}${(baseCloseUSD * rate).toFixed(decimals)}`;
+  const confBg = document.querySelector('.conf-bar-bg');
+  if (confBg) confBg.style.display = appSettings.showConfBar ? '' : 'none';
+  const disclaimer = document.querySelector('.disclaimer-bar');
+  if (disclaimer) disclaimer.style.display = appSettings.showDisclaimer ? '' : 'none';
+}
+
+function syncSettingsUI() {
+  const setActive = (id, val) => {
+    document.getElementById(id)?.querySelectorAll('.btn-group-item')
+      .forEach(b => b.classList.toggle('active', b.dataset.val === val));
+  };
+  setActive('setting-currency',    appSettings.currency);
+  setActive('setting-period',      appSettings.defaultPeriod);
+  setActive('setting-chart-style', appSettings.chartStyle);
+  const langEl = document.getElementById('setting-language');
+  if (langEl) langEl.value = appSettings.language;
+  const cb = document.getElementById('setting-conf-bar');
+  if (cb) cb.checked = appSettings.showConfBar;
+  const ar = document.getElementById('setting-auto-refresh');
+  if (ar) ar.checked = appSettings.autoRefresh;
+  const di = document.getElementById('setting-disclaimer');
+  if (di) di.checked = appSettings.showDisclaimer;
+}
+
+function initSettings() {
+  loadSettings();
+  const overlay = document.getElementById('settings-overlay');
+  document.getElementById('settings-btn')?.addEventListener('click', () => {
+    overlay.classList.add('settings-open');
+    syncSettingsUI();
+  });
+
+  document.getElementById('setting-language')?.addEventListener('change', e => {
+    appSettings.language = e.target.value; saveSettings(); applySettings();
+  });
+
+  const BTN_GROUP_MAP = { currency: 'currency', period: 'defaultPeriod', 'chart-style': 'chartStyle' };
+  document.querySelectorAll('.btn-group[id^="setting-"]').forEach(group => {
+    const key = BTN_GROUP_MAP[group.id.replace('setting-', '')];
+    group.querySelectorAll('.btn-group-item').forEach(btn => {
+      btn.addEventListener('click', () => {
+        group.querySelectorAll('.btn-group-item').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        if (key) { appSettings[key] = btn.dataset.val; saveSettings(); applySettings(); }
+      });
+    });
+  });
+
+  document.getElementById('setting-conf-bar')?.addEventListener('change', e => {
+    appSettings.showConfBar = e.target.checked; saveSettings(); applySettings();
+  });
+  document.getElementById('setting-auto-refresh')?.addEventListener('change', e => {
+    appSettings.autoRefresh = e.target.checked; saveSettings();
+  });
+  document.getElementById('setting-disclaimer')?.addEventListener('change', e => {
+    appSettings.showDisclaimer = e.target.checked; saveSettings(); applySettings();
+  });
+
+  applySettings();
+}
+
 // ── State ──────────────────────────────────────────────────────────────────────
-let overlayState = { msft: true, gold: true, oil: true, vix: false };
+let overlayState = { msft: true, gold: true, oil: true, vix: true };
 let historyData  = [];
 let filteredData = [];
 
@@ -157,6 +329,15 @@ function setPeriod(period) {
 }
 
 function initChartInteraction() {
+  document.querySelectorAll('.period-btn[data-period]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (btn.disabled) return;
+      document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('period-active'));
+      btn.classList.add('period-active');
+      renderLine30(filterByPeriod(historyData, btn.dataset.period));
+    });
+  });
+
   document.querySelectorAll('.period-bar-btn[data-period]').forEach(btn => {
     btn.addEventListener('click', () => setPeriod(btn.dataset.period));
   });
@@ -257,12 +438,43 @@ function fmtDate(str) {
 }
 
 // ── Page 1 — 30-day line chart ─────────────────────────────────────────────────
+function updatePeriodBtnAvailability(data) {
+  if (!data.length) return;
+  const first = new Date(data[0].date);
+  const last  = new Date(data.at(-1).date);
+  const daysDiff = (last - first) / (1000 * 60 * 60 * 24);
+
+  const minDays = { '1W': 7, '1M': 28, '3M': 85, 'YTD': 30, '1Y': 350 };
+  document.querySelectorAll('.period-btn[data-period]').forEach(btn => {
+    const needed = minDays[btn.dataset.period] ?? 0;
+    const insufficient = daysDiff < needed;
+    btn.disabled = insufficient;
+    btn.style.opacity = insufficient ? '0.35' : '';
+    btn.style.cursor  = insufficient ? 'not-allowed' : '';
+    btn.title = insufficient ? `Not enough data (${Math.round(daysDiff)} days available)` : '';
+  });
+}
+
+function filterByPeriod(data, period) {
+  if (!data.length) return data;
+  const last = new Date(data.at(-1).date);
+  let cutoff = null;
+  if (period === '1W') { cutoff = new Date(last); cutoff.setDate(cutoff.getDate() - 7); }
+  else if (period === '1M') { cutoff = new Date(last); cutoff.setMonth(cutoff.getMonth() - 1); }
+  else if (period === '3M') { cutoff = new Date(last); cutoff.setMonth(cutoff.getMonth() - 3); }
+  else if (period === '1Y') { cutoff = new Date(last); cutoff.setFullYear(cutoff.getFullYear() - 1); }
+  else if (period === 'YTD') { cutoff = new Date(last.getFullYear(), 0, 1); }
+  if (!cutoff) return data;
+  const cutStr = cutoff.toISOString().slice(0, 10);
+  return data.filter(r => r.date >= cutStr);
+}
+
 function renderLine30(data) {
   const svg = clearSvg('svg-line30');
   if (!svg || !data.length) return;
   const W = 1080, H = 210;
-  const pts = data.slice(-30).map(r => r.close);
-  const dates = data.slice(-30);
+  const pts = data.map(r => r.close);
+  const dates = data;
   if (!pts.length) return;
   const min = Math.min(...pts) - 4, max = Math.max(...pts) + 4;
   const xs = i => 50 + (i * (W - 90)) / (pts.length - 1);
@@ -293,7 +505,9 @@ function renderLine30(data) {
   svg.append(svgEl('path', { d: area, fill: 'url(#lg30)' }));
   svg.append(svgEl('path', { d: path, fill: 'none', stroke: C.accent, 'stroke-width': '2' }));
   const last = pts[pts.length-1];
-  svg.append(svgEl('circle', { cx: xs(pts.length-1).toFixed(1), cy: ys(last).toFixed(1), r:'4', fill:C.accent, stroke:'#0a1117', 'stroke-width':'2' }));
+  const actualW = svg.getBoundingClientRect().width || W;
+  const rx = (4 * W / actualW).toFixed(2);
+  svg.append(svgEl('ellipse', { cx: xs(pts.length-1).toFixed(1), cy: ys(last).toFixed(1), rx, ry:'4', fill:C.accent, stroke:C.bg, 'stroke-width':'2', 'vector-effect':'non-scaling-stroke' }));
 }
 
 // ── Page 2 — History chart ─────────────────────────────────────────────────────
@@ -338,12 +552,12 @@ function renderHistoryChart(data, overlays) {
     const idx = Math.min(i * step, n-1);
     svgText(svg, xs(idx), H-14, data[idx] ? fmtDate(data[idx].date) : '', { mono:true });
   }
-  // Y labels (indexed, e.g. 70, 80, 90, 100, 110, 120)
   for (let i = 0; i < 6; i++) {
-    const v = max - i * (max - min) / 5;
-    svgText(svg, 8, 20 + i * ((H-60)/5) + 4, v.toFixed(0), { mono:true });
+    const v    = max - i * (max - min) / 5;
+    const pct  = v - 100;
+    const label = pct === 0 ? '0%' : (pct > 0 ? `+${pct.toFixed(0)}%` : `${pct.toFixed(0)}%`);
+    svgText(svg, 8, 20 + i * ((H-60)/5) + 4, label, { mono:true });
   }
-  svgText(svg, 8, 20 - 10, 'idx', { mono:true, fill: C.textDim });
 
   if (overlays.msft) {
     const areaPts = mkPath(pts);
@@ -352,7 +566,7 @@ function renderHistoryChart(data, overlays) {
   }
   if (overlays.gold) svg.append(svgEl('path', { d: mkPath(goldPts), fill:'none', stroke:C.amber,    'stroke-width':'1.5', 'stroke-dasharray':'4 3', opacity:'0.85' }));
   if (overlays.oil)  svg.append(svgEl('path', { d: mkPath(oilPts),  fill:'none', stroke:C.red,      'stroke-width':'1.5', 'stroke-dasharray':'4 3', opacity:'0.7' }));
-  if (overlays.vix)  svg.append(svgEl('path', { d: mkPath(vixPts),  fill:'none', stroke:'#A8ADB5',  'stroke-width':'1.5', 'stroke-dasharray':'4 3', opacity:'0.6' }));
+  if (overlays.vix)  svg.append(svgEl('path', { d: mkPath(vixPts),  fill:'none', stroke:'#8B5CF6',  'stroke-width':'1.5', 'stroke-dasharray':'4 3', opacity:'0.6' }));
 }
 
 // ── Page 2 — Daily returns ─────────────────────────────────────────────────────
@@ -416,7 +630,7 @@ function renderOverlayToggles() {
     { key:'msft', label:'MSFT',        color: C.accent },
     { key:'gold', label:'Gold (GLD)',   color: C.amber  },
     { key:'oil',  label:'Crude (CL=F)', color: C.red    },
-    { key:'vix',  label:'VIX',          color: '#A8ADB5' },
+    { key:'vix',  label:'VIX',          color: '#8B5CF6' },
   ];
   el.innerHTML = items.map(t => `
     <div class="overlay-toggle ${overlayState[t.key]?'on':''}" data-key="${t.key}" style="--clr:${t.color}">
@@ -522,13 +736,14 @@ function renderFeatureBars() {
 // ── Page 1 — Prediction card ───────────────────────────────────────────────────
 function renderPrediction(p) {
   const isUp  = !p || p.direction === 'UP';
-  const conf  = p?.probability ?? 67;
+  const conf  = p?.probability ?? null;
   const dir   = p?.direction ?? 'UP';
   const color = isUp ? C.accent : C.red;
 
   const arrowEl = document.getElementById('pred-arrow-icon');
   const dirEl   = document.getElementById('pred-dir-text');
   const confEl  = document.getElementById('pred-conf-num');
+  const pctEl   = document.getElementById('pred-conf-pct');
   const barEl   = document.getElementById('conf-bar-fill');
   const circle  = document.getElementById('pred-circle');
 
@@ -536,22 +751,23 @@ function renderPrediction(p) {
   if (arrowEl) arrowEl.style.color  = color;
   if (dirEl)   dirEl.textContent    = dir;
   if (dirEl)   dirEl.style.color    = color;
-  if (confEl)  confEl.textContent   = typeof conf === 'number' ? conf.toFixed(0) : conf;
-  if (barEl)   { barEl.style.width = `${conf}%`; barEl.style.background = color; }
+  if (confEl)  confEl.textContent   = conf !== null ? Number(conf).toFixed(0) : '–';
+  if (pctEl)   pctEl.style.display  = conf !== null ? '' : 'none';
+  if (barEl)   { barEl.style.width = conf !== null ? `${conf}%` : '0%'; barEl.style.background = color; }
   if (circle)  { circle.style.borderColor = color; circle.style.boxShadow = `0 0 60px ${color}44`; }
 
   document.getElementById('ensemble-rows').innerHTML = [
     ['Random Forest',  0.71, 'UP'],
     ['XGBoost',        0.65, 'UP'],
     ['LSTM',           0.58, 'UP'],
-    ['Stacking Meta',  conf/100, dir],
+    ['Stacking Meta',  conf !== null ? conf/100 : null, dir],
   ].map(([name, val, d], i) => `
     <div class="ensemble-row">
       <div class="ensemble-name ${i===3?'highlight':''}">${name}</div>
       <div class="ensemble-bar-bg">
-        <div class="ensemble-bar-fill ${i===3?'highlight':''}" style="width:${(val*100).toFixed(0)}%"></div>
+        <div class="ensemble-bar-fill ${i===3?'highlight':''}" style="width:${val !== null ? (val*100).toFixed(0) : 0}%"></div>
       </div>
-      <div class="ensemble-stat">${d} · ${(val*100).toFixed(0)}%</div>
+      <div class="ensemble-stat">${val !== null ? `${d} · ${(val*100).toFixed(0)}%` : '–'}</div>
     </div>
   `).join('');
 }
@@ -562,7 +778,11 @@ function renderKPIs(latest, prev) {
   const closeEl = document.getElementById('tile-close');
   const subEl   = document.getElementById('tile-close-sub');
   const dateEl  = document.getElementById('tile-pred-date');
-  if (closeEl) closeEl.textContent = `$${latest.close.toFixed(2)}`;
+  baseCloseUSD = latest.close;
+  const sym  = CURRENCY_SYMBOLS[appSettings.currency] || '$';
+  const rate = exchangeRates[appSettings.currency] || 1;
+  const decimals = appSettings.currency === 'JPY' ? 0 : 2;
+  if (closeEl) closeEl.textContent = `${sym}${(baseCloseUSD * rate).toFixed(decimals)}`;
   if (subEl && prev) {
     const delta = latest.close - prev.close;
     const pct   = (delta / prev.close * 100).toFixed(2);
@@ -580,12 +800,34 @@ function renderKPIs(latest, prev) {
 }
 
 // ── Page 3 — Metrics ───────────────────────────────────────────────────────────
+const MODEL_METRICS = {
+  stacking: { accuracy: 0.79, precision: 0.81, recall: 0.80, f1: 0.79, label: 'Stacking Ensemble', days: 380 },
+  xgboost:  { accuracy: 0.74, precision: 0.76, recall: 0.75, f1: 0.74, label: 'XGBoost (it3)',      days: 380 },
+  rf:       { accuracy: 0.71, precision: 0.73, recall: 0.70, f1: 0.71, label: 'Random Forest (it3)', days: 380 },
+  lr:       { accuracy: 0.61, precision: 0.62, recall: 0.60, f1: 0.58, label: 'Logistic Regression (it3)', days: 380 },
+};
+
 function renderMetrics(metrics) {
   const best = metrics?.[0] ?? null;
   ['accuracy','precision','recall','f1'].forEach(key => {
     const el = document.getElementById(`m-${key}`);
     if (el && best?.[key] != null) el.textContent = best[key].toFixed(2);
   });
+}
+
+function applyModelSelection(key) {
+  const m = MODEL_METRICS[key] || MODEL_METRICS.stacking;
+  document.getElementById('m-accuracy').textContent  = m.accuracy.toFixed(2);
+  document.getElementById('m-precision').textContent = m.precision.toFixed(2);
+  document.getElementById('m-recall').textContent    = m.recall.toFixed(2);
+  document.getElementById('m-f1').textContent        = m.f1.toFixed(2);
+  const lead = document.querySelector('#page-model .page-lead');
+  if (lead) lead.textContent = `${m.label} · evaluated on test set Feb 2023 – Feb 2025 (${m.days} trading days)`;
+}
+
+function initModelSelect() {
+  const sel = document.getElementById('model-select');
+  sel?.addEventListener('change', () => applyModelSelection(sel.value));
 }
 
 // ── Status indicator ───────────────────────────────────────────────────────────
@@ -612,9 +854,10 @@ function renderAll(data, prediction, metrics) {
   viewStart    = 0;
   viewEnd      = data.length - 1;
   const latest = data.at(-1), prev = data.at(-2);
+  updatePeriodBtnAvailability(data);
   renderPrediction(prediction);
   renderKPIs(latest, prev);
-  renderLine30(data);
+  renderLine30(filterByPeriod(data, appSettings.defaultPeriod || '1M'));
   renderHistoryChart(filteredData, overlayState);
   renderOverlayToggles();
   renderReturns(filteredData);
@@ -625,6 +868,144 @@ function renderAll(data, prediction, metrics) {
   renderModelCompare();
   renderFeatureBars();
   renderMetrics(metrics ?? []);
+}
+
+// ── Prediction details modal ───────────────────────────────────────────────────
+let lastPrediction = null;
+
+function initModalClosers() {
+  document.addEventListener('click', e => {
+    const closeBtn = e.target.closest('[data-close-overlay]');
+    if (closeBtn) {
+      document.getElementById(closeBtn.dataset.closeOverlay)?.classList.remove('settings-open');
+      return;
+    }
+    if (e.target.classList.contains('settings-overlay')) {
+      e.target.classList.remove('settings-open');
+    }
+  });
+}
+
+function openPredDetails() {
+  const overlay = document.getElementById('pred-details-overlay');
+  if (!overlay) return;
+
+  const p    = lastPrediction;
+  const isUp = !p || p.direction === 'UP';
+  const dir  = p?.direction ?? '–';
+  const conf = p?.probability ?? null;
+  const color = isUp ? C.accent : C.red;
+
+  document.getElementById('pred-detail-hero').innerHTML = `
+    <div class="pred-detail-dir" style="color:${color}">${isUp ? '↑' : '↓'} ${dir}</div>
+    <div style="display:flex;gap:32px">
+      <div class="pred-detail-meta">
+        <div class="pred-detail-label">Confidence</div>
+        <div class="pred-detail-val" style="color:${color}">${conf !== null ? conf.toFixed(1) + '%' : '–'}</div>
+      </div>
+      <div class="pred-detail-meta">
+        <div class="pred-detail-label">Prediction date</div>
+        <div class="pred-detail-val">${p?.date ?? '–'}</div>
+      </div>
+    </div>`;
+
+  document.getElementById('pred-detail-ensemble').innerHTML = [
+    ['Random Forest',       0.71, 'UP'],
+    ['XGBoost',             0.65, 'UP'],
+    ['LSTM',                0.58, 'UP'],
+    ['Stacking Meta',       conf !== null ? conf / 100 : null, dir],
+  ].map(([name, val, d], i) => `
+    <div class="pred-detail-row">
+      <span class="pred-detail-key" style="${i===3?`color:${C.accent};font-weight:700`:''}">${name}</span>
+      <span class="pred-detail-val2">${val !== null ? `${d} · ${(val*100).toFixed(0)}%` : '–'}</span>
+    </div>`).join('');
+
+  document.getElementById('pred-detail-info').innerHTML = `
+    <div class="pred-detail-row"><span class="pred-detail-key">Model</span><span class="pred-detail-val2">${p?.model_name ?? 'XGBoost (it3)'}</span></div>
+    <div class="pred-detail-row"><span class="pred-detail-key">Features</span><span class="pred-detail-val2">14 technical + macro</span></div>
+    <div class="pred-detail-row"><span class="pred-detail-key">Training data</span><span class="pred-detail-val2">2015 – 2026</span></div>
+    <div class="pred-detail-row"><span class="pred-detail-key">Test accuracy</span><span class="pred-detail-val2">79%</span></div>
+    <div class="pred-detail-row"><span class="pred-detail-key">Last close</span><span class="pred-detail-val2">${p ? `$${p.close?.toFixed(2) ?? '–'}` : '–'}</span></div>`;
+
+  overlay.classList.add('settings-open');
+}
+
+// ── CSV download modal ─────────────────────────────────────────────────────────
+function initCsvModal() {
+  const overlay  = document.getElementById('csv-overlay');
+  const btnOpen  = document.getElementById('btn-download-csv');
+  const btnClose = document.getElementById('csv-close');
+  const btnDl    = document.getElementById('csv-download-btn');
+
+  function openCsv() {
+    if (historyData.length) {
+      document.getElementById('csv-date-from').value = historyData[0].date.slice(0,10);
+      document.getElementById('csv-date-to').value   = historyData.at(-1).date.slice(0,10);
+      updateCsvRowCount();
+    }
+    overlay.classList.add('settings-open');
+  }
+
+  function updateCsvRowCount() {
+    const from = document.getElementById('csv-date-from').value;
+    const to   = document.getElementById('csv-date-to').value;
+    const rows = historyData.filter(r => r.date >= from && r.date <= to).length;
+    const el   = document.getElementById('csv-row-count');
+    if (el) el.textContent = `${rows} trading day${rows !== 1 ? 's' : ''} selected`;
+  }
+
+  btnOpen?.addEventListener('click', openCsv);
+  document.getElementById('csv-date-from')?.addEventListener('change', updateCsvRowCount);
+  document.getElementById('csv-date-to')?.addEventListener('change', updateCsvRowCount);
+
+  document.getElementById('csv-format')?.querySelectorAll('.btn-group-item').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.getElementById('csv-format').querySelectorAll('.btn-group-item').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    });
+  });
+
+  btnDl?.addEventListener('click', () => {
+    const from    = document.getElementById('csv-date-from').value;
+    const to      = document.getElementById('csv-date-to').value;
+    const prices  = document.getElementById('csv-prices').checked;
+    const indic   = document.getElementById('csv-indicators').checked;
+    const rets    = document.getElementById('csv-returns').checked;
+    const fmt     = document.getElementById('csv-format')?.querySelector('.active')?.dataset.val ?? 'csv';
+
+    const rows = historyData.filter(r => r.date >= from && r.date <= to);
+
+    const r2 = (v) => v != null ? Math.round(v * 100) / 100 : '';
+
+    const clean = rows.map((r, i) => {
+      const prev = rows[i - 1];
+      const ret  = prev ? r2(((r.close - prev.close) / prev.close) * 100) : '';
+      const obj  = { Date: r.date };
+      if (prices) { obj['Open ($)'] = r2(r.open); obj['High ($)'] = r2(r.high); obj['Low ($)'] = r2(r.low); obj['Close ($)'] = r2(r.close); obj['Volume'] = r.volume ?? ''; }
+      if (indic)  { obj['Gold ($)'] = r2(r.gold_close); obj['Oil ($)'] = r2(r.oil_close); obj['VIX'] = r2(r.vix); }
+      if (rets)   { obj['Daily Return (%)'] = ret; }
+      return obj;
+    });
+
+    if (fmt === 'json') {
+      const blob = new Blob([JSON.stringify(clean, null, 2)], { type: 'application/json' });
+      triggerDownload(blob, 'msft_report.json');
+    } else {
+      const headers = Object.keys(clean[0] || {});
+      const lines   = clean.map(r => headers.map(h => r[h]).join(','));
+      const blob    = new Blob([[headers.join(','), ...lines].join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+      triggerDownload(blob, 'msft_report.csv');
+    }
+    overlay.classList.remove('settings-open');
+  });
+}
+
+function triggerDownload(blob, filename) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
 }
 
 // ── API client ─────────────────────────────────────────────────────────────────
@@ -648,13 +1029,28 @@ function initTheme() {
     document.documentElement.dataset.theme = next;
     localStorage.setItem('theme', next);
     btn.textContent = next === 'dark' ? '☀' : '☾';
+    // Re-read CSS vars and re-render all SVG charts
+    C = getColors();
+    if (filteredData.length) {
+      renderLine30(historyData);
+      renderHistoryChart(filteredData, overlayState);
+      renderReturns(filteredData);
+    }
+    renderConfusionMatrix();
+    renderModelCompare();
+    renderFeatureBars();
   });
 }
 
 async function init() {
   initNav();
   initTheme();
+  C = getColors();
+  initModalClosers();
+  initSettings();
   initChartInteraction();
+
+  await fetchExchangeRates();
 
   const [histRes, predRes, metricsRes] = await Promise.all([
     apiFetch('/api/stock/history?days=9999').catch(() => null),
@@ -663,7 +1059,12 @@ async function init() {
   ]);
 
   const data = histRes?.data?.length ? histRes.data : SAMPLE_HISTORY;
+  lastPrediction = predRes?.data ?? null;
   renderAll(data, predRes?.data, metricsRes?.data);
+
+  initModelSelect();
+  document.getElementById('btn-pred-details')?.addEventListener('click', openPredDetails);
+  initCsvModal();
 }
 
 document.addEventListener('DOMContentLoaded', init);

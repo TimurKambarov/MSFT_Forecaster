@@ -1,0 +1,22 @@
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.env
+.venv/
+venv/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Database
+*.db
+
+# Trained models (large binary files — store separately)
+*.pkl
+
+# IDE
+.vscode/
+

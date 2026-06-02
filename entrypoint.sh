@@ -13,9 +13,6 @@ fi
 echo "Running prediction..."
 python /app/src/msft_forecaster/predict.py
 
-# Start the Streamlit dashboard
-echo "Starting dashboard on http://0.0.0.0:8501"
-exec streamlit run /app/dashboard/streamlit_app.py \
-    --server.port=8501 \
-    --server.address=0.0.0.0 \
-    --server.headless=true
+# Start the dashboard server
+echo "Starting dashboard on http://0.0.0.0:5000"
+exec python /app/dashboard/server.py

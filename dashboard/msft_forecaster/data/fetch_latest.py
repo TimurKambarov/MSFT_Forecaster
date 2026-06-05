@@ -1,5 +1,5 @@
 """
-src/msft_forecaster/data/fetch_latest.py
+dashboard/msft_forecaster/data/fetch_latest.py
 =========================================
 Fetches the latest daily market data from Yahoo Finance and appends
 new rows to the SQLite database. Existing dates are never overwritten.
@@ -12,8 +12,8 @@ Tickers fetched:
     SPY   → spy_data    (spy_close)
 
 Usage:
-    python -m src.msft_forecaster.data.fetch_latest
-    python src/msft_forecaster/data/fetch_latest.py
+    
+    python dashboard/msft_forecaster/data/fetch_latest.py
 
 Author: Group 15 — Block D ADS-AI BUas
 """

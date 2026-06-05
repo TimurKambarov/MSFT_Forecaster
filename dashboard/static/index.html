@@ -162,7 +162,7 @@
                 </div>
               </div>
               <div class="pred-conf-block">
-                <div class="pred-conf-label">Model confidence</div>
+                <div class="pred-conf-label">Accuracy</div>
                 <div class="pred-conf-value"><span id="pred-conf-num">–</span><span class="pred-conf-pct-sym" id="pred-conf-pct">%</span></div>
                 <div class="conf-bar-bg"><div class="conf-bar-fill" id="conf-bar-fill" style="width:0%"></div></div>
               </div>
@@ -246,7 +246,7 @@
             <div class="chart-block-head">
               <div>
                 <div class="chart-block-title">MSFT Closing Price · Historical</div>
-                <div class="chart-block-sub">% change from period start · all series indexed to 0%</div>
+                <div class="chart-block-sub">Relative trend · each series scaled to display range</div>
               </div>
               <div class="overlay-toggles" id="overlay-toggles"></div>
             </div>
@@ -323,6 +323,18 @@
               <div id="summary-stats"></div>
             </div>
           </div>
+
+          <div class="chart-block">
+            <div class="chart-block-head">
+              <div>
+                <div class="chart-block-title">Prediction History</div>
+                <div class="chart-block-sub">Recent UP/DOWN predictions vs actual outcome &nbsp;·&nbsp; <span class="pred-hist-dummy-note" style="color:var(--amber);font-size:10px"></span></div>
+              </div>
+              <div id="pred-hist-accuracy" style="font-family:var(--mono);font-size:13px;color:var(--text-muted)"></div>
+            </div>
+            <div id="pred-hist-table" class="pred-hist-table"></div>
+          </div>
+
         </div>
       </section>
 
@@ -332,7 +344,7 @@
           <div class="section-head section-head-flex">
             <div>
               <div class="page-h1">Model Performance</div>
-              <div class="page-lead">Stacking ensemble · evaluated on test set Feb 2023 – Feb 2025 (380 trading days)</div>
+              <div class="page-lead">XGBoost (it3) · 471 test days · Jan 2024 – Apr 2026</div>
             </div>
             <div class="active-model-row" id="active-model-row">
               <span class="active-model-dot"></span>
@@ -345,7 +357,7 @@
             <div class="tile big-tile">
               <div class="tile-label">Accuracy</div>
               <div class="tile-val tile-val-big tile-mono tile-accent" id="m-accuracy">0.5223</div>
-              <div class="tile-sub">198 / 380 correct</div>
+              <div class="tile-sub">246 / 471 correct</div>
             </div>
             <div class="tile big-tile">
               <div class="tile-label">Precision</div>
@@ -378,7 +390,7 @@
             </div>
             <div class="chart-block split-flex">
               <div class="chart-block-title">Model Comparison · F1 Score</div>
-              <div class="chart-block-sub" style="margin-bottom:8px">Stacking ensemble (highlighted) outperforms each base model individually.</div>
+              <div class="chart-block-sub" style="margin-bottom:8px">XGBoost (highlighted) achieves the best F1 score across all three models.</div>
               <svg id="svg-model-compare" viewBox="0 0 560 220" width="100%" height="220"></svg>
             </div>
           </div>
@@ -389,10 +401,9 @@
                 <span style="color:#009FFD;font-size:13px">▼</span>
                 <div>
                   <div class="chart-block-title">Feature Importance</div>
-                  <div class="chart-block-sub">Top 10 features ranked by XGBoost gain</div>
+                  <div class="chart-block-sub">Top 10 features ranked by XGBoost gain · scores are evenly distributed, indicating no single dominant feature</div>
                 </div>
               </div>
-              <button class="btn btn-small">Toggle source: XGBoost ▾</button>
             </div>
             <div style="margin-top:14px;border-top:1px solid #2F3236;padding-top:14px">
               <svg id="svg-feature-bars" viewBox="0 0 720 260" width="100%" height="260"></svg>
@@ -415,8 +426,8 @@
               Microsoft's (MSFT) closing price will move <span class="accent-text">up</span> or
               <span class="amber-text"> down</span> on the next trading day.
               It uses an <strong>XGBoost classifier (it3)</strong> trained on 14 technical and macro features.
-              Inputs include MSFT daily prices and three macro signals
-              (Gold, Crude Oil, and the VIX volatility index). The dashboard is built for retail investors who
+              Inputs include MSFT daily prices and four macro signals
+              (Gold, Crude Oil, VIX, and S&amp;P 500). The dashboard is built for retail investors who
               want a simple directional signal without wading through code or formulas.
             </p>
           </div>
@@ -436,7 +447,7 @@
               <div class="pipeline-arrow">→</div>
               <div class="pipeline-box pipeline-box-accent"><div class="pipeline-step pipeline-step-accent">06 · Serve</div><div class="pipeline-name">Dashboard</div></div>
             </div>
-            <div class="pipeline-note">Daily cron · 09:30 ET · before market open</div>
+            <div class="pipeline-note">Runs automatically at container start · fetches latest data from Yahoo Finance</div>
           </div>
 
           <div class="card-block">
@@ -450,6 +461,7 @@
                 <tr><td class="td-accent td-mono">Gold (GLD)</td><td>Yahoo Finance (yfinance API)</td><td>CSV / DataFrame</td><td>Daily · post-close 16:00 ET</td></tr>
                 <tr><td class="td-accent td-mono">Crude Oil (CL=F)</td><td>Yahoo Finance (yfinance API)</td><td>CSV / DataFrame</td><td>Daily · post-close 17:00 ET</td></tr>
                 <tr><td class="td-accent td-mono">VIX (^VIX)</td><td>CBOE via yfinance</td><td>CSV / DataFrame</td><td>Daily · post-close 16:15 ET</td></tr>
+                <tr><td class="td-accent td-mono">S&amp;P 500 (SPY)</td><td>Yahoo Finance (yfinance API)</td><td>CSV / DataFrame</td><td>Daily · post-close 16:00 ET</td></tr>
               </tbody>
             </table>
           </div>
@@ -513,7 +525,7 @@
             <label class="settings-toggle"><input type="checkbox" id="csv-prices" checked><span class="settings-toggle-track"><span class="settings-toggle-thumb"></span></span></label>
           </div>
           <div class="settings-row settings-row-inline" style="margin-top:10px">
-            <div class="settings-row-label">Macro indicators (Gold, Oil, VIX)</div>
+            <div class="settings-row-label">Macro indicators (Gold, Oil, VIX, S&amp;P 500)</div>
             <label class="settings-toggle"><input type="checkbox" id="csv-indicators" checked><span class="settings-toggle-track"><span class="settings-toggle-thumb"></span></span></label>
           </div>
           <div class="settings-row settings-row-inline" style="margin-top:10px">

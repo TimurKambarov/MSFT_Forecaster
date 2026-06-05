@@ -1,11 +1,11 @@
 """
-src/msft_forecaster/predict.py
+dashboard/msft_forecaster/predict.py
 ================================
 Generates the next-day directional prediction for MSFT and stores
 it in the predictions table of the SQLite database.
 
 Run daily after market close:
-    python src/msft_forecaster/predict.py
+    python dashboard/msft_forecaster/predict.py
 
 Author: Group 15 — Block D ADS-AI BUas
 """
@@ -58,19 +58,30 @@ def _rsi(series: pd.Series, window: int = 14) -> pd.Series:
 
 
 def load_best_model():
-    """Load the best available trained model and scaler."""
+    """Load the best available trained model and matching scaler."""
+    import re
+
     for prefix in ("xgboost_lucan", "random_forest_lucan", "logistic_regression_lucan"):
         models = sorted(MODELS_DIR.glob(f"{prefix}*.pkl"))
-        scalers = sorted(MODELS_DIR.glob("scaler_lucan*.pkl"))
-        if models and scalers:
-            try:
-                model = joblib.load(models[-1])
-                scaler = joblib.load(scalers[-1])
-                name = models[-1].stem
-                logger.info("Loaded model: %s", name)
-                return model, scaler, name
-            except Exception as exc:
-                logger.warning("Could not load %s: %s", prefix, exc)
+        if not models:
+            continue
+        model_path = models[-1]
+        # Extract iteration tag (e.g. "it3") from model filename to find matching scaler
+        match = re.search(r"(it\d+)", model_path.stem)
+        if match:
+            scaler_path = MODELS_DIR / f"scaler_lucan_{match.group(1)}.pkl"
+            if not scaler_path.exists():
+                scaler_path = sorted(MODELS_DIR.glob("scaler_lucan*.pkl"))[-1]
+        else:
+            scaler_path = sorted(MODELS_DIR.glob("scaler_lucan*.pkl"))[-1]
+        try:
+            model = joblib.load(model_path)
+            scaler = joblib.load(scaler_path)
+            name = model_path.stem
+            logger.info("Loaded model: %s with scaler: %s", name, scaler_path.stem)
+            return model, scaler, name
+        except Exception as exc:
+            logger.warning("Could not load %s: %s", prefix, exc)
     return None, None, None
 
 

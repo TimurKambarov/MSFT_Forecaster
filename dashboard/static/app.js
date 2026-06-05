@@ -549,16 +549,16 @@ const SAMPLE_HISTORY = [
 ];
 
 const FEATURE_IMPORTANCE = [
-  { name: 'Close_lag_1',     pct: 0.18 },
-  { name: 'RSI_14',          pct: 0.14 },
-  { name: 'VIX_lag_1',       pct: 0.11 },
-  { name: 'Volume_ma_10',    pct: 0.10 },
-  { name: 'MACD_signal',     pct: 0.09 },
-  { name: 'Crude_return_1d', pct: 0.08 },
-  { name: 'Close_ma_20',     pct: 0.07 },
-  { name: 'Gold_return_5d',  pct: 0.06 },
-  { name: 'Bollinger_pct',   pct: 0.05 },
-  { name: 'ATR_14',          pct: 0.04 },
+  { name: 'close_to_sma10_pct', pct: 0.0766 },
+  { name: 'lag_spy_return',     pct: 0.0746 },
+  { name: 'daily_return',       pct: 0.0740 },
+  { name: 'lag_oil_return',     pct: 0.0727 },
+  { name: 'volume_ratio',       pct: 0.0723 },
+  { name: 'momentum_5',         pct: 0.0721 },
+  { name: 'lag_gold_return',    pct: 0.0721 },
+  { name: 'sma_crossover',      pct: 0.0718 },
+  { name: 'lag_vix_1',          pct: 0.0712 },
+  { name: 'rolling_std_5',      pct: 0.0702 },
 ];
 
 // ── Settings ───────────────────────────────────────────────────────────────────
@@ -591,7 +591,7 @@ const I18N = {
     predictions: 'Predictions', 'show-conf-bar': 'Show confidence bar',
     'auto-refresh': 'Auto-refresh data', 'auto-refresh-note': 'Reload predictions every 15 min',
     'show-disclaimer': 'Show disclaimer',
-    tomorrow: 'Tomorrow', 'model-conf': 'Model confidence', 'ens-label': 'Model breakdown',
+    tomorrow: 'Tomorrow', 'model-conf': 'Accuracy', 'ens-label': 'Model breakdown',
   },
   nl: {
     settings: 'Instellingen', display: 'Weergave', currency: 'Valuta',
@@ -601,7 +601,7 @@ const I18N = {
     predictions: 'Voorspellingen', 'show-conf-bar': 'Betrouwbaarheidsbalk tonen',
     'auto-refresh': 'Data automatisch verversen', 'auto-refresh-note': 'Herlaad voorspellingen elke 15 min',
     'show-disclaimer': 'Disclaimer tonen',
-    tomorrow: 'Morgen', 'model-conf': 'Modelbetrouwbaarheid', 'ens-label': 'Model overzicht',
+    tomorrow: 'Morgen', 'model-conf': 'Nauwkeurigheid', 'ens-label': 'Model overzicht',
   },
   de: {
     settings: 'Einstellungen', display: 'Anzeige', currency: 'Währung',
@@ -611,7 +611,7 @@ const I18N = {
     predictions: 'Vorhersagen', 'show-conf-bar': 'Konfidenzbalken anzeigen',
     'auto-refresh': 'Daten automatisch aktualisieren', 'auto-refresh-note': 'Vorhersagen alle 15 Min neu laden',
     'show-disclaimer': 'Haftungsausschluss anzeigen',
-    tomorrow: 'Morgen', 'model-conf': 'Modellkonfidenz', 'ens-label': 'Modell-Übersicht',
+    tomorrow: 'Morgen', 'model-conf': 'Genauigkeit', 'ens-label': 'Modell-Übersicht',
   },
   fr: {
     settings: 'Paramètres', display: 'Affichage', currency: 'Devise',
@@ -621,7 +621,7 @@ const I18N = {
     predictions: 'Prédictions', 'show-conf-bar': 'Afficher la barre de confiance',
     'auto-refresh': 'Actualisation automatique', 'auto-refresh-note': 'Recharger les prédictions toutes les 15 min',
     'show-disclaimer': 'Afficher l\'avertissement',
-    tomorrow: 'Demain', 'model-conf': 'Confiance du modèle', 'ens-label': 'Détail du modèle',
+    tomorrow: 'Demain', 'model-conf': 'Précision', 'ens-label': 'Détail du modèle',
   },
   es: {
     settings: 'Configuración', display: 'Visualización', currency: 'Moneda',
@@ -631,7 +631,7 @@ const I18N = {
     predictions: 'Predicciones', 'show-conf-bar': 'Mostrar barra de confianza',
     'auto-refresh': 'Actualización automática', 'auto-refresh-note': 'Recargar predicciones cada 15 min',
     'show-disclaimer': 'Mostrar descargo de responsabilidad',
-    tomorrow: 'Mañana', 'model-conf': 'Confianza del modelo', 'ens-label': 'Desglose del modelo',
+    tomorrow: 'Mañana', 'model-conf': 'Precisión', 'ens-label': 'Desglose del modelo',
   },
 };
 
@@ -642,7 +642,10 @@ const DEFAULT_SETTINGS = {
 let appSettings = { ...DEFAULT_SETTINGS };
 
 function loadSettings() {
-  try { appSettings = { ...DEFAULT_SETTINGS, ...JSON.parse(localStorage.getItem('appSettings') || '{}') }; }
+  try {
+    const saved = JSON.parse(localStorage.getItem('appSettings') || '{}');
+    appSettings = { ...DEFAULT_SETTINGS, ...saved, currency: 'USD' };
+  }
   catch { appSettings = { ...DEFAULT_SETTINGS }; }
 }
 function saveSettings() { localStorage.setItem('appSettings', JSON.stringify(appSettings)); }
@@ -670,6 +673,7 @@ function applySettings() {
   if (confBg) confBg.style.display = appSettings.showConfBar ? '' : 'none';
   const disclaimer = document.querySelector('.disclaimer-bar');
   if (disclaimer) disclaimer.style.display = appSettings.showDisclaimer ? '' : 'none';
+  if (homeRenderData.length) drawHomeChart();
 }
 
 function syncSettingsUI() {
@@ -1165,24 +1169,86 @@ function initHomeInteraction() {
 }
 
 // ── Page 2 — History chart ─────────────────────────────────────────────────────
+function renderPredictionHistory(res) {
+  const table = document.getElementById('pred-hist-table');
+  const accEl = document.getElementById('pred-hist-accuracy');
+  const note  = document.querySelector('.pred-hist-dummy-note');
+  if (!table) return;
+  if (!res || !res.data?.length) { table.innerHTML = '<p style="padding:12px;color:var(--text-dim)">No data available.</p>'; return; }
+
+  if (accEl) accEl.textContent = `Accuracy: ${res.accuracy}%`;
+  if (note)  note.textContent  = res.has_dummy ? '★ dummy predictions' : '';
+
+  const dir = (d) => d === 1
+    ? '<span class="ph-dir ph-up">↑ UP</span>'
+    : '<span class="ph-dir ph-down">↓ DOWN</span>';
+
+  table.innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Close</th>
+          <th>Prediction</th>
+          <th>Confidence</th>
+          <th>Actual</th>
+          <th>Result</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${res.data.map(r => `
+          <tr>
+            <td>${r.date}</td>
+            <td>$${r.close.toFixed(2)}</td>
+            <td>${dir(r.predicted_direction)} ${r.is_dummy ? '<span class="ph-dummy">(est.)</span>' : ''}</td>
+            <td class="ph-conf">${r.confidence}%</td>
+            <td>${dir(r.actual_direction)}</td>
+            <td><span class="ph-badge ${r.correct ? 'correct' : 'incorrect'}">${r.correct ? '● Correct' : '● Wrong'}</span></td>
+          </tr>`).join('')}
+      </tbody>
+    </table>`;
+}
+
 function renderHistoryChart(data, overlays) {
   const svg = clearSvg('svg-history');
   if (!svg || !data.length) return;
   const W = 1080, H = 300;
   const n = data.length;
 
-  // Normalize all series to index 100 at first data point so they're comparable
-  const normalize = (arr) => { const base = arr[0] || 1; return arr.map(v => (v / base) * 100); };
-  const pts      = normalize(data.map(r => r.close));
-  const goldPts  = normalize(data.map(r => r.gold_close));
-  const oilPts   = normalize(data.map(r => r.oil_close));
-  const vixPts   = normalize(data.map(r => r.vix));
+  // Scale every series independently to fit within chart bounds (shows trend shape)
+  const fitToRange = (arr, lo = 74, hi = 126) => {
+    const vals = arr.filter(v => v != null);
+    if (!vals.length) return arr;
+    const dMin = Math.min(...vals), dMax = Math.max(...vals);
+    const span = dMax - dMin || 1;
+    return arr.map(v => v == null ? null : lo + ((v - dMin) / span) * (hi - lo));
+  };
+  // Smooth window scales with dataset size
+  const w = n > 500 ? Math.floor(n / 150) : n > 100 ? 3 : 1;
+  const smooth = (arr, win = w) => win <= 1 ? arr : arr.map((v, i) => {
+    if (v == null) return null;
+    const slice = arr.slice(Math.max(0, i - win + 1), i + 1).filter(x => x != null);
+    return slice.reduce((a, b) => a + b, 0) / slice.length;
+  });
+  const pts      = smooth(fitToRange(data.map(r => r.close)));
+  const goldPts  = smooth(fitToRange(data.map(r => r.gold_close)));
+  const oilPts   = smooth(fitToRange(data.map(r => r.oil_close)));
+  const vixPts   = smooth(fitToRange(data.map(r => r.vix)));
 
   const min = 60, max = 140;
 
-  const xs = i => 60 + (i * (W - 100)) / Math.max(n - 1, 1);
-  const ys = v => H - 40 - ((v - min) / (max - min)) * (H - 70);
-  const mkPath = arr => arr.map((v, i) => `${i===0?'M':'L'} ${xs(i).toFixed(1)} ${ys(Math.min(Math.max(v, min), max)).toFixed(1)}`).join(' ');
+  const xs = i => 50 + (i * (W - 100)) / Math.max(n - 1, 1);
+  const ys = v => H - 45 - ((v - min) / (max - min)) * (H - 70);
+  const mkPath = arr => {
+    let d = '', gap = true;
+    arr.forEach((v, i) => {
+      if (v == null) { gap = true; return; }
+      const cmd = gap ? 'M' : 'L';
+      d += `${cmd} ${xs(i).toFixed(1)} ${ys(Math.min(Math.max(v, min), max)).toFixed(1)} `;
+      gap = false;
+    });
+    return d.trim();
+  };
 
   const defs = svgEl('defs');
   const lgh = svgEl('linearGradient', { id:'lgh', x1:'0', x2:'0', y1:'0', y2:'1' });
@@ -1195,10 +1261,10 @@ function renderHistoryChart(data, overlays) {
 
   for (let i = 0; i < 6; i++) {
     const y = 20 + i * ((H-60)/5);
-    svg.append(svgEl('line', { x1:60, x2:W-40, y1:y, y2:y, stroke:C.lineSoft, 'stroke-dasharray':'2 4' }));
+    svg.append(svgEl('line', { x1:50, x2:W-50, y1:y, y2:y, stroke:C.lineSoft, 'stroke-dasharray':'2 4' }));
   }
   // Baseline at 100 (starting value)
-  svg.append(svgEl('line', { x1:60, x2:W-40, y1:ys(100).toFixed(1), y2:ys(100).toFixed(1), stroke:C.line, 'stroke-dasharray':'6 3', opacity:'0.5' }));
+  svg.append(svgEl('line', { x1:50, x2:W-50, y1:ys(100).toFixed(1), y2:ys(100).toFixed(1), stroke:C.line, 'stroke-dasharray':'6 3', opacity:'0.5' }));
 
   // Axis labels via HTML (no SVG distortion)
   _renderHistoryAxisLabels(data, xs, ys, n, min, max, H, W);
@@ -1227,18 +1293,6 @@ function _renderHistoryAxisLabels(data, xs, ys, n, min, max, H, W) {
   if (!wrap) return;
   wrap.querySelectorAll('.hx-axis-label').forEach(el => el.remove());
 
-  // Y-axis: 6 % labels on left
-  for (let i = 0; i < 6; i++) {
-    const v   = max - i * (max - min) / 5;
-    const pct = v - 100;
-    const yPct = ((20 + i * ((H - 60) / 5) + 4) / H) * 100;
-    const lbl = pct === 0 ? '0%' : (pct > 0 ? `+${pct.toFixed(0)}%` : `${pct.toFixed(0)}%`);
-    const el = document.createElement('div');
-    el.className = 'hx-axis-label hx-y-label';
-    el.style.top = yPct + '%';
-    el.textContent = lbl;
-    wrap.appendChild(el);
-  }
 
   // X-axis: 6 date labels at bottom
   const step = Math.floor(n / 5);
@@ -1449,21 +1503,39 @@ function renderSummaryStats(data) {
 }
 
 // ── Page 2 — Overlay toggles ───────────────────────────────────────────────────
+const OVERLAY_INFO = {
+  msft: 'Microsoft Corporation (MSFT)\nTech giant — cloud, software & AI.\nWeight in S&P 500: ~7%.',
+  gold: 'Gold Futures (GC=F)\nSafe-haven asset. Rises during\nmarket uncertainty & inflation.',
+  oil:  'Crude Oil Futures (CL=F)\nWTI benchmark. Sensitive to\ngeopolitics and global demand.',
+  vix:  'CBOE Volatility Index (VIX)\n"Fear gauge" of the market.\nHigh VIX = high expected volatility.',
+};
+
 function renderOverlayToggles() {
   const el = document.getElementById('overlay-toggles');
   if (!el) return;
   const items = [
-    { key:'msft', label:'MSFT',        color: C.accent },
-    { key:'gold', label:'Gold (GLD)',   color: C.amber  },
-    { key:'oil',  label:'Crude (CL=F)', color: C.red    },
-    { key:'vix',  label:'VIX',          color: '#8B5CF6' },
+    { key:'msft', label:'MSFT',      color: C.accent  },
+    { key:'gold', label:'Gold (GLD)', color: C.amber   },
+    { key:'oil',  label:'Crude Oil',  color: C.red     },
+    { key:'vix',  label:'VIX',        color: '#8B5CF6' },
   ];
   el.innerHTML = items.map(t => `
     <div class="overlay-toggle ${overlayState[t.key]?'on':''}" data-key="${t.key}" style="--clr:${t.color}">
       <span class="toggle-line"></span>${t.label}
       <span class="toggle-switch"><span class="toggle-thumb"></span></span>
     </div>
-  `).join('');
+  `).join('') + `
+    <div class="overlay-info-btn" tabindex="0" aria-label="Series info">
+      <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.6">
+        <circle cx="7.5" cy="7.5" r="6.5"/>
+        <line x1="7.5" y1="6.5" x2="7.5" y2="11"/>
+        <circle cx="7.5" cy="4.5" r="0.7" fill="currentColor" stroke="none"/>
+      </svg>
+      <div class="overlay-info-tip">
+        ${items.map(t => `<div class="info-tip-row"><span class="info-tip-dot" style="background:${t.color}"></span><div><b>${t.label}</b><br><span>${OVERLAY_INFO[t.key].split('\n').slice(1).join('<br>')}</span></div></div>`).join('')}
+      </div>
+    </div>
+  `;
   el.querySelectorAll('.overlay-toggle').forEach(tog => {
     tog.addEventListener('click', () => {
       overlayState[tog.dataset.key] = !overlayState[tog.dataset.key];
@@ -1478,10 +1550,10 @@ function renderConfusionMatrix() {
   const svg = clearSvg('svg-confusion');
   if (!svg) return;
   const cells = [
-    { label:'TN', v:101, cx:0, cy:0, c:C.accent, a:0.85 },
-    { label:'FP', v:89,  cx:1, cy:0, c:C.amber,  a:0.45 },
-    { label:'FN', v:91,  cx:0, cy:1, c:C.amber,  a:0.4  },
-    { label:'TP', v:99,  cx:1, cy:1, c:C.accent, a:1    },
+    { label:'TN', v:123, cx:0, cy:0, c:C.accent, a:0.85 },
+    { label:'FP', v:97,  cx:1, cy:0, c:C.amber,  a:0.45 },
+    { label:'FN', v:128, cx:0, cy:1, c:C.amber,  a:0.4  },
+    { label:'TP', v:123, cx:1, cy:1, c:C.accent, a:1    },
   ];
   const cW=150, cH=90, ox=80, oy=28;
 
@@ -1564,20 +1636,26 @@ function renderPrediction(p) {
   const dir   = p?.direction ?? 'UP';
   const color = isUp ? C.accent : C.red;
 
+  const key      = modelKeyFromName(p?.model_name);
+  const accVal   = MODEL_METRICS[key]?.accuracy ?? null;
+  const accPct   = accVal !== null ? accVal * 100 : null;
+
   const arrowEl = document.getElementById('pred-arrow-icon');
   const dirEl   = document.getElementById('pred-dir-text');
   const confEl  = document.getElementById('pred-conf-num');
   const pctEl   = document.getElementById('pred-conf-pct');
   const barEl   = document.getElementById('conf-bar-fill');
   const circle  = document.getElementById('pred-circle');
+  const label   = document.querySelector('.pred-conf-label');
 
   if (arrowEl) arrowEl.textContent  = isUp ? '↑' : '↓';
   if (arrowEl) arrowEl.style.color  = color;
   if (dirEl)   dirEl.textContent    = dir;
   if (dirEl)   dirEl.style.color    = color;
-  if (confEl)  confEl.textContent   = conf !== null ? Number(conf).toFixed(0) : '–';
-  if (pctEl)   pctEl.style.display  = conf !== null ? '' : 'none';
-  if (barEl)   { barEl.style.width = conf !== null ? `${conf}%` : '0%'; barEl.style.background = color; }
+  if (label)   label.textContent    = 'Accuracy';
+  if (confEl)  confEl.textContent   = accPct !== null ? accPct.toFixed(1) : '–';
+  if (pctEl)   pctEl.style.display  = accPct !== null ? '' : 'none';
+  if (barEl)   { barEl.style.width = accPct !== null ? `${accPct}%` : '0%'; barEl.style.background = C.accent; }
   if (circle)  { circle.style.borderColor = color; circle.style.boxShadow = `0 0 60px ${color}44`; }
 
   const modelName = p?.model_name ?? 'XGBoost';
@@ -1585,9 +1663,9 @@ function renderPrediction(p) {
     <div class="ensemble-row">
       <div class="ensemble-name highlight">${modelName}</div>
       <div class="ensemble-bar-bg">
-        <div class="ensemble-bar-fill highlight" style="width:${conf !== null ? conf.toFixed(0) : 0}%"></div>
+        <div class="ensemble-bar-fill highlight" style="width:${accPct !== null ? accPct.toFixed(1) : 0}%"></div>
       </div>
-      <div class="ensemble-stat">${conf !== null ? `${dir} · ${conf.toFixed(0)}%` : '–'}</div>
+      <div class="ensemble-stat">${accPct !== null ? accPct.toFixed(1) + '%' : '–'}</div>
     </div>
   `;
 }
@@ -1626,9 +1704,9 @@ function renderKPIs(latest, prev) {
 
 // ── Page 3 — Metrics ───────────────────────────────────────────────────────────
 const MODEL_METRICS = {
-  xgboost:  { accuracy: 0.5223, precision: 0.5272, recall: 0.5223, f1: 0.5222, label: 'XGBoost (it3)',               days: 380 },
-  rf:       { accuracy: 0.5137, precision: 0.5104, recall: 0.5137, f1: 0.5058, label: 'Random Forest (it3)',          days: 380 },
-  lr:       { accuracy: 0.5136, precision: 0.5133, recall: 0.5136, f1: 0.5134, label: 'Logistic Regression (it3)',    days: 380 },
+  xgboost:  { accuracy: 0.5223, precision: 0.5272, recall: 0.5223, f1: 0.5222, label: 'XGBoost (it3)',            days: 471 },
+  rf:       { accuracy: 0.4841, precision: 0.4827, recall: 0.4841, f1: 0.4832, label: 'Random Forest (it3)',       days: 471 },
+  lr:       { accuracy: 0.4862, precision: 0.4983, recall: 0.4862, f1: 0.4737, label: 'Logistic Regression (it3)', days: 471 },
 };
 
 function renderMetrics(metrics) {
@@ -1648,8 +1726,6 @@ function applyModelSelection(key) {
   document.getElementById('m-f1').textContent        = m.f1.toFixed(4);
   const accSub = document.querySelector('#m-accuracy')?.closest('.tile')?.querySelector('.tile-sub');
   if (accSub) accSub.textContent = `${correct} / ${m.days} correct`;
-  const lead = document.querySelector('#page-model .page-lead');
-  if (lead) lead.textContent = `${m.label} · evaluated on test set Feb 2023 – Feb 2025 (${m.days} trading days)`;
 }
 
 function modelKeyFromName(name) {
@@ -1720,6 +1796,7 @@ function renderAll(data, prediction, metrics) {
   renderModelCompare();
   renderFeatureBars();
   renderMetrics(metrics ?? []);
+  apiFetch('/api/prediction/history?n=20').then(renderPredictionHistory).catch(() => {});
 }
 
 // ── Prediction details modal ───────────────────────────────────────────────────
@@ -1765,8 +1842,8 @@ function openPredDetails() {
     <div class="pred-detail-row"><span class="pred-detail-key">Model</span><span class="pred-detail-val2">${p?.model_name ?? 'XGBoost (it3)'}</span></div>
     <div class="pred-detail-row"><span class="pred-detail-key">Features</span><span class="pred-detail-val2">14 technical + macro</span></div>
     <div class="pred-detail-row"><span class="pred-detail-key">Training data</span><span class="pred-detail-val2">2015 – 2026</span></div>
-    <div class="pred-detail-row"><span class="pred-detail-key">Test accuracy</span><span class="pred-detail-val2">79%</span></div>
-    <div class="pred-detail-row"><span class="pred-detail-key">Last close</span><span class="pred-detail-val2">${p ? `$${p.close?.toFixed(2) ?? '–'}` : '–'}</span></div>`;
+    <div class="pred-detail-row"><span class="pred-detail-key">Test accuracy</span><span class="pred-detail-val2">52%</span></div>
+    <div class="pred-detail-row"><span class="pred-detail-key">Last close</span><span class="pred-detail-val2">${p ? `${CURRENCY_SYMBOLS[appSettings.currency] || '$'}${((p.close ?? 0) * (exchangeRates[appSettings.currency] || 1)).toFixed(appSettings.currency === 'JPY' ? 0 : 2)}` : '–'}</span></div>`;
 
   overlay.classList.add('settings-open');
 }
@@ -1853,7 +1930,8 @@ function triggerDownload(blob, filename) {
 const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:5000' : '';
 
 async function apiFetch(path) {
-  const res = await fetch(`${API_BASE}${path}`, { signal: AbortSignal.timeout(15000) });
+  const sep = path.includes('?') ? '&' : '?';
+  const res = await fetch(`${API_BASE}${path}${sep}_=${Date.now()}`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
 }
@@ -1861,7 +1939,7 @@ async function apiFetch(path) {
 // ── Init ───────────────────────────────────────────────────────────────────────
 function initTheme() {
   const btn = document.getElementById('theme-toggle');
-  const saved = localStorage.getItem('theme') ?? 'dark';
+  const saved = localStorage.getItem('theme') ?? 'light';
   document.documentElement.dataset.theme = saved;
   btn.textContent = saved === 'dark' ? '☀' : '☾';
 

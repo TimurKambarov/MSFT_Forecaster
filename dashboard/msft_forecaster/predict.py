@@ -204,7 +204,10 @@ if __name__ == "__main__":
     result = run_prediction()
     if result:
         logger.info(
-            "Done — %s %s %.1f%%", result["date"], result["direction"], result["probability"]
+            "Done — %s %s %.1f%%",
+            result["date"],
+            result["direction"],
+            result["probability"],
         )
     else:
         logger.error("Prediction failed")

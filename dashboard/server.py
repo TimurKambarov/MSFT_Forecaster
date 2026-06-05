@@ -293,7 +293,7 @@ def prediction_latest():
                         "status": "ok",
                         "data": {
                             "date": row["date"],
-                            "direction": "UP" if row["predicted_direction"] == 1 else "DOWN",
+                            "direction": ("UP" if row["predicted_direction"] == 1 else "DOWN"),
                             "prediction": row["predicted_direction"],
                             "probability": round(row["confidence"] * 100, 1),
                             "close": row["close"],
@@ -312,7 +312,12 @@ def prediction_latest():
         model, scaler, model_name = load_best_model()
         if model is None:
             return (
-                jsonify({"status": "model_unavailable", "message": "No trained model found."}),
+                jsonify(
+                    {
+                        "status": "model_unavailable",
+                        "message": "No trained model found.",
+                    }
+                ),
                 503,
             )
 
@@ -397,7 +402,8 @@ def prediction_history():
         conn = get_conn()
         msft = (
             pd.read_sql(
-                f"SELECT date, close FROM msft_daily ORDER BY date DESC LIMIT {n + 1}", conn
+                f"SELECT date, close FROM msft_daily ORDER BY date DESC LIMIT {n + 1}",
+                conn,
             )
             .sort_values("date")
             .reset_index(drop=True)
@@ -449,7 +455,12 @@ def prediction_history():
 
         return app.response_class(
             _json.dumps(
-                {"status": "ok", "data": rows, "accuracy": accuracy, "has_dummy": has_dummy}
+                {
+                    "status": "ok",
+                    "data": rows,
+                    "accuracy": accuracy,
+                    "has_dummy": has_dummy,
+                }
             ),
             mimetype="application/json",
         )

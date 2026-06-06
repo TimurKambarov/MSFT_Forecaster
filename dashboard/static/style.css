@@ -492,6 +492,107 @@ body { display: flex; flex-direction: column; overflow: hidden; }
   margin-top: -4px;
 }
 
+/* ── Home chart crosshair HTML labels ───────────────────────────────────────── */
+.hx-lbl {
+  display: none;
+  position: absolute;
+  background: var(--accent);
+  color: #fff;
+  font-size: 11px;
+  font-family: var(--mono);
+  font-weight: 600;
+  padding: 3px 7px;
+  border-radius: 4px;
+  pointer-events: none;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+.hx-axis-label {
+  position: absolute;
+  font-size: 11px;
+  font-family: var(--mono);
+  color: var(--text-dim);
+  pointer-events: none;
+  white-space: nowrap;
+  line-height: 1;
+}
+.hx-y-label {
+  left: 4px;
+  transform: translateY(-50%);
+}
+.hx-x-label {
+  bottom: 4px;
+}
+
+.hx-date-lbl {
+  top: 3px;
+  transform: translateX(-50%);
+}
+.hx-price-lbl {
+  right: 0;
+  transform: translateY(-50%);
+}
+
+/* ── Historical chart tooltip ────────────────────────────────────────────────── */
+.active-model-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+.active-model-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex-shrink: 0;
+  box-shadow: 0 0 6px var(--accent);
+}
+.active-model-name {
+  font-size: 11px;
+  font-family: var(--mono);
+  color: var(--accent);
+  font-weight: 600;
+}
+.active-model-tag {
+  font-size: 9px;
+  font-family: var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-dim);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 1px 5px;
+}
+
+.hist-tooltip {
+  display: none;
+  position: absolute;
+  background: var(--bg-soft);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 11px;
+  font-family: var(--mono);
+  pointer-events: none;
+  min-width: 150px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+  z-index: 10;
+}
+.hist-tip-date { font-size: 10px; color: var(--text-dim); margin-bottom: 6px; padding-bottom: 5px; border-bottom: 1px solid var(--line-soft); }
+.hist-tip-row  { display: flex; justify-content: space-between; gap: 10px; padding: 2px 0; }
+.hist-tip-key  { color: var(--text-muted); }
+.hist-tip-val  { font-weight: 600; color: var(--text); }
+.hist-tip-pct  { font-weight: 600; min-width: 44px; text-align: right; }
+
+.pred-close-label {
+  font-size: 9px;
+  color: var(--text-dim);
+  font-family: var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-top: 2px;
+}
+
 .pred-conf-block { margin-top: 16px; text-align: center; }
 
 .pred-conf-label {
@@ -554,7 +655,7 @@ body { display: flex; flex-direction: column; overflow: hidden; }
 
 .ensemble-bar-bg {
   flex: 1;
-  height: 8px;
+  height: 14px;
   background: var(--bg-softer);
   border-radius: 4px;
   overflow: hidden;
@@ -1052,6 +1153,101 @@ body { display: flex; flex-direction: column; overflow: hidden; }
   color: var(--accent);
   font-size: 12px;
 }
+
+/* ── Prediction History Table ────────────────────────────────────────────── */
+.pred-hist-table {
+  width: 100%;
+  overflow-x: auto;
+  padding: 0 16px 16px;
+}
+.pred-hist-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+.pred-hist-table th {
+  text-align: left;
+  padding: 6px 12px;
+  color: var(--text-dim);
+  font-weight: 600;
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: .6px;
+  border-bottom: 1px solid var(--line);
+}
+.pred-hist-table td {
+  padding: 7px 12px;
+  border-bottom: 1px solid var(--line-soft);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 12px;
+}
+.pred-hist-table tr:last-child td { border-bottom: none; }
+.pred-hist-table tr:hover td { background: var(--bg-softer); }
+.ph-dir { font-weight: 700; font-size: 13px; }
+.ph-up   { color: #22c55e; }
+.ph-down { color: #ef4444; }
+.ph-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .3px;
+}
+.ph-badge.correct   { background: rgba(34,197,94,.15);  color: #22c55e; border: 1px solid rgba(34,197,94,.3); }
+.ph-badge.incorrect { background: rgba(239,68,68,.13);  color: #ef4444; border: 1px solid rgba(239,68,68,.28); }
+.ph-dummy { color: var(--text-dim); font-size: 10px; }
+.ph-conf { color: var(--text-muted); }
+
+/* ── Overlay info button ──────────────────────────────────────────────────── */
+.overlay-info-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  cursor: pointer;
+  color: var(--text-dim);
+  transition: color .15s;
+  flex-shrink: 0;
+}
+.overlay-info-btn:hover { color: var(--accent); }
+.overlay-info-tip {
+  display: none;
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: var(--bg-soft);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px 14px;
+  z-index: 300;
+  width: 240px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.18);
+  pointer-events: none;
+}
+.overlay-info-btn:hover .overlay-info-tip { display: flex; flex-direction: column; gap: 10px; }
+.info-tip-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  font-size: 12px;
+  color: var(--text);
+  line-height: 1.45;
+}
+.info-tip-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+.info-tip-row span { color: var(--text-muted); }
+.info-tip-row b { color: var(--text); }
 
 .role-name {
   font-size: 10px;

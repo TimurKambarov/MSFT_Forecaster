@@ -1,7 +1,7 @@
 """
 Build db/stocks.db entirely from Yahoo Finance (yfinance).
 Run once from the project root:
-    python setup_db.py
+    python dashboard/setup_db.py
 
 All historical data from 2015-01-01 to today is fetched fresh from
 yfinance so every table uses a single consistent data source.
@@ -17,7 +17,7 @@ import yfinance as yf
 logging.basicConfig(level=logging.INFO, format="%(levelname)s  %(message)s")
 logger = logging.getLogger(__name__)
 
-BASE_DIR = Path(__file__).parent
+BASE_DIR = Path(__file__).parent.parent  # project root (dashboard/ → root)
 DB_PATH = BASE_DIR / "db" / "stocks.db"
 START = "2015-01-01"
 
@@ -68,36 +68,29 @@ def build():
         df.to_sql(table, conn, if_exists="replace", index=False)
         logger.info("%s → %s (%d rows)", ticker, table, len(df))
 
-    # Model metrics from training notebooks (it3 evaluation)
+    # Model metrics from it3 evaluation (XGBoost, test set Jan 2024 – Apr 2026)
     metrics = pd.DataFrame(
         [
             {
-                "model": "Stacking Ensemble",
-                "accuracy": 0.79,
-                "precision": 0.81,
-                "recall": 0.80,
-                "f1": 0.79,
-            },
-            {
                 "model": "XGBoost",
-                "accuracy": 0.74,
-                "precision": 0.76,
-                "recall": 0.75,
-                "f1": 0.74,
+                "accuracy": 0.5223,
+                "precision": 0.5272,
+                "recall": 0.5223,
+                "f1": 0.5222,
             },
             {
                 "model": "Random Forest",
-                "accuracy": 0.71,
-                "precision": 0.73,
-                "recall": 0.70,
-                "f1": 0.71,
+                "accuracy": 0.4841,
+                "precision": 0.4827,
+                "recall": 0.4841,
+                "f1": 0.4832,
             },
             {
                 "model": "Logistic Regression",
-                "accuracy": 0.61,
-                "precision": 0.62,
-                "recall": 0.60,
-                "f1": 0.58,
+                "accuracy": 0.4862,
+                "precision": 0.4983,
+                "recall": 0.4862,
+                "f1": 0.4737,
             },
         ]
     )

@@ -41,6 +41,14 @@ CORS(app)
 logging.basicConfig(level=logging.INFO, format="%(levelname)s  %(message)s")
 logger = logging.getLogger(__name__)
 
+
+@app.after_request
+def no_cache(response):
+    if request.path.startswith("/api/"):
+        response.headers["Cache-Control"] = "no-store"
+    return response
+
+
 FEATURE_COLS = [
     "rsi_14",
     "momentum_5",
@@ -70,18 +78,28 @@ def get_conn():
 
 def load_best_model():
     """Load the best available trained model + matching scaler."""
+    import re
+
     for prefix in ("xgboost_lucan", "random_forest_lucan", "logistic_regression_lucan"):
         models = sorted(MODELS_DIR.glob(f"{prefix}*.pkl"))
-        scalers = sorted(MODELS_DIR.glob("scaler_lucan*.pkl"))
-        if models and scalers:
-            try:
-                model = joblib.load(models[-1])
-                scaler = joblib.load(scalers[-1])
-                name = models[-1].stem
-                logger.info(f"Loaded model: {name}")
-                return model, scaler, name
-            except Exception as e:
-                logger.warning(f"Could not load {prefix}: {e}")
+        if not models:
+            continue
+        model_path = models[-1]
+        match = re.search(r"(it\d+)", model_path.stem)
+        if match:
+            scaler_path = MODELS_DIR / f"scaler_lucan_{match.group(1)}.pkl"
+            if not scaler_path.exists():
+                scaler_path = sorted(MODELS_DIR.glob("scaler_lucan*.pkl"))[-1]
+        else:
+            scaler_path = sorted(MODELS_DIR.glob("scaler_lucan*.pkl"))[-1]
+        try:
+            model = joblib.load(model_path)
+            scaler = joblib.load(scaler_path)
+            name = model_path.stem
+            logger.info(f"Loaded model: {name} with scaler: {scaler_path.stem}")
+            return model, scaler, name
+        except Exception as e:
+            logger.warning(f"Could not load {prefix}: {e}")
     return None, None, None
 
 
@@ -177,7 +195,12 @@ def stock_history():
             conn,
         ).sort_values("date")
         conn.close()
-        return jsonify({"status": "ok", "data": df.to_dict(orient="records")})
+        import json as _json
+
+        return app.response_class(
+            _json.dumps({"status": "ok", "data": _json.loads(df.to_json(orient="records"))}),
+            mimetype="application/json",
+        )
     except Exception as e:
         logger.error(f"stock_history: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
@@ -270,7 +293,7 @@ def prediction_latest():
                         "status": "ok",
                         "data": {
                             "date": row["date"],
-                            "direction": "UP" if row["predicted_direction"] == 1 else "DOWN",
+                            "direction": ("UP" if row["predicted_direction"] == 1 else "DOWN"),
                             "prediction": row["predicted_direction"],
                             "probability": round(row["confidence"] * 100, 1),
                             "close": row["close"],
@@ -289,7 +312,12 @@ def prediction_latest():
         model, scaler, model_name = load_best_model()
         if model is None:
             return (
-                jsonify({"status": "model_unavailable", "message": "No trained model found."}),
+                jsonify(
+                    {
+                        "status": "model_unavailable",
+                        "message": "No trained model found.",
+                    }
+                ),
                 503,
             )
 
@@ -362,6 +390,82 @@ def model_metrics():
 
         return jsonify({"status": "ok", "data": metrics})
     except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@app.route("/api/prediction/history")
+def prediction_history():
+    import hashlib, json as _json
+
+    n = request.args.get("n", 20, type=int)
+    try:
+        conn = get_conn()
+        msft = (
+            pd.read_sql(
+                f"SELECT date, close FROM msft_daily ORDER BY date DESC LIMIT {n + 1}",
+                conn,
+            )
+            .sort_values("date")
+            .reset_index(drop=True)
+        )
+
+        try:
+            real_preds = pd.read_sql(
+                "SELECT date, predicted_direction, confidence, model_used FROM predictions ORDER BY date DESC",
+                conn,
+            )
+        except Exception:
+            real_preds = pd.DataFrame(
+                columns=["date", "predicted_direction", "confidence", "model_used"]
+            )
+        conn.close()
+
+        rows = []
+        for i in range(1, len(msft)):
+            row = msft.iloc[i]
+            prev = msft.iloc[i - 1]
+            actual = 1 if row["close"] > prev["close"] else 0
+
+            match = real_preds[real_preds["date"] == row["date"]]
+            if len(match):
+                pred_dir = int(match.iloc[0]["predicted_direction"])
+                conf = float(match.iloc[0]["confidence"])
+                is_dummy = False
+            else:
+                seed = int(hashlib.md5(row["date"].encode()).hexdigest()[:8], 16)
+                pred_dir = seed % 2
+                conf = 0.50 + (seed % 25) / 100
+                is_dummy = True
+
+            rows.append(
+                {
+                    "date": row["date"],
+                    "predicted_direction": pred_dir,
+                    "confidence": round(conf * 100, 1),
+                    "actual_direction": actual,
+                    "correct": bool(pred_dir == actual),
+                    "close": round(float(row["close"]), 2),
+                    "is_dummy": is_dummy,
+                }
+            )
+
+        rows = list(reversed(rows[-n:]))
+        accuracy = round(sum(1 for r in rows if r["correct"]) / len(rows) * 100, 1) if rows else 0
+        has_dummy = any(r["is_dummy"] for r in rows)
+
+        return app.response_class(
+            _json.dumps(
+                {
+                    "status": "ok",
+                    "data": rows,
+                    "accuracy": accuracy,
+                    "has_dummy": has_dummy,
+                }
+            ),
+            mimetype="application/json",
+        )
+    except Exception as e:
+        logger.error("prediction_history: %s", e)
         return jsonify({"status": "error", "message": str(e)}), 500
 
 

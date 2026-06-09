@@ -1,0 +1,44 @@
+name: Weekly data update
+
+# Runs every Monday at 06:00 UTC, and can also be triggered manually.
+on:
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+# Allow the workflow to push the updated CSVs back to the repo.
+permissions:
+  contents: write
+
+jobs:
+  update-data:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install yfinance pandas
+
+      - name: Run weekly fetch + rolling-window update
+        run: python data/raw/fetch_latest.py
+
+      - name: Commit and push updated CSVs
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/raw/*.csv
+          if git diff --staged --quiet; then
+            echo "No data changes to commit."
+          else
+            git commit -m "chore(data): weekly rolling-window update [skip ci]"
+            git push
+          fi

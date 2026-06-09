@@ -1,0 +1,47 @@
+{
+  "model_type": "XGBClassifier",
+  "prediction": "weekly MSFT direction (0=DOWN, 1=UP, 2=NEUTRAL)",
+  "neutral_threshold": 0.01,
+  "peer_tickers": [
+    "nvda",
+    "amzn"
+  ],
+  "feature_columns": [
+    "return_1w",
+    "return_4w",
+    "return_8w",
+    "lag_return_1",
+    "lag_return_2",
+    "rsi_14",
+    "macd",
+    "macd_signal",
+    "macd_hist",
+    "price_range_pct",
+    "rolling_std_5",
+    "volume_ratio",
+    "nvda_return_1w",
+    "nvda_lag_return_1",
+    "nvda_rel_strength",
+    "nvda_volume_ratio",
+    "amzn_return_1w",
+    "amzn_lag_return_1",
+    "amzn_rel_strength",
+    "amzn_volume_ratio"
+  ],
+  "best_params": {
+    "n_estimators": 125,
+    "max_depth": 5,
+    "learning_rate": 0.13063309199955792,
+    "subsample": 0.9703124742643265,
+    "colsample_bytree": 0.6169213618884603,
+    "min_child_weight": 10,
+    "gamma": 0.20633599909638914,
+    "reg_lambda": 0.0014870288773484624
+  },
+  "test_metrics": {
+    "f1": 0.3762508809020437,
+    "accuracy": 0.3958333333333333,
+    "precision": 0.44585218702865764,
+    "recall": 0.3877450980392157
+  }
+}

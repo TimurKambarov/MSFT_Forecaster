@@ -1,31 +1,29 @@
 """
-train_random_forest.py
-======================
-Train the tuned Random Forest model for weekly MSFT direction prediction.
+train_xgboost.py
+================
+Train the tuned XGBoost model for weekly MSFT direction prediction.
 
-This script reproduces the exact preprocessing pipeline from the weekly model
-training notebook, then trains ONLY the Random Forest classifier — selected
-because its Optuna-tuned version yielded the best results among the candidate
-models (Random Forest, XGBoost, LSTM, ARIMA).
+This script reproduces the EXACT preprocessing pipeline used by
+train_random_forests.py (load -> align -> weekly resample -> feature
+engineering with peer-stock indicators -> split/scale), then trains and
+tunes ONLY an XGBoost classifier. It is one of three sibling scripts
+(Random Forest, XGBoost, LSTM) that share identical preprocessing so the
+three model types are compared on the same footing.
 
-Pipeline
---------
-1. Load the merged multi-stock dataset.
-2. Filter to 2020-01-01 onward and align to NYSE trading days.
-3. Resample daily bars into weekly (week-ending-Friday) bars.
-4. Engineer scale-invariant weekly features and the 3-class target.
-5. Handle missing values, time-order split (no shuffle), RobustScaler.
-6. Tune Random Forest hyper-parameters with Optuna (TimeSeriesSplit CV).
-7. Refit the best model on the full training split and evaluate on the test set.
-8. Save the fitted model, the scaler, the feature list, and the best params.
+Peer-stock features
+-------------------
+On top of the 12 MSFT base features, each peer ticker in PEER_TICKERS adds
+four scale-invariant features (own return, lagged return, relative strength
+vs MSFT, volume ratio). Edit PEER_TICKERS to add or remove peers; the feature
+list, model, and saved artifacts all follow automatically.
 
 Usage
 -----
-    python train_random_forest.py
-    python train_random_forest.py --data path/to/modelling_dataset.csv \\
+    python train_xgboost.py
+    python train_xgboost.py --data path/to/modelling_dataset.csv \\
         --n-trials 40 --output-dir models
 
-Author: Group 15 — Block D ADS-AI BUas
+Author: Group 15 - Block D ADS-AI BUas
 """
 
 import argparse
@@ -38,7 +36,6 @@ import numpy as np
 import pandas as pd
 import optuna
 import pandas_market_calendars as mcal
-from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import (
     accuracy_score,
     classification_report,
@@ -48,15 +45,16 @@ from sklearn.metrics import (
 )
 from sklearn.model_selection import TimeSeriesSplit, train_test_split
 from sklearn.preprocessing import RobustScaler
+from sklearn.utils.class_weight import compute_sample_weight
+from xgboost import XGBClassifier
 
-# ── Logging ──────────────────────────────────────────────────────────────────
+# -- Logging -------------------------------------------------------------------
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
 
-# Quieten Optuna's per-trial chatter; the script logs its own summary.
 optuna.logging.set_verbosity(optuna.logging.WARNING)
 
 # ── Constants (mirrors the notebook) ──────────────────────────────────────────
@@ -78,7 +76,14 @@ MSFT_AGG = {
     "msft_volume": "sum",
 }
 
-FEATURE_COLUMNS = [
+# Peer / micro-indicator tickers (each has <ticker>_close and <ticker>_volume).
+# These sit alongside MSFT in the merged dataset and are turned into
+# scale-invariant features in engineer_features().
+PEER_TICKERS = ["nvda", "amzn"]
+
+# Base MSFT-derived features. Peer features are appended at runtime by
+# build_feature_columns() so the two stay in sync automatically.
+BASE_FEATURE_COLUMNS = [
     "return_1w",
     "return_4w",
     "return_8w",
@@ -92,6 +97,42 @@ FEATURE_COLUMNS = [
     "rolling_std_5",
     "volume_ratio",
 ]
+
+
+def build_feature_columns(peers=PEER_TICKERS):
+    """Return the full feature list: MSFT base features plus peer features.
+
+    For every peer ticker, engineer_features() creates four columns:
+    ``<ticker>_return_1w`` (its own weekly return), ``<ticker>_lag_return_1``
+    (that return shifted one week), ``<ticker>_rel_strength`` (MSFT's weekly
+    return minus the peer's — a cross-sectional co-movement signal), and
+    ``<ticker>_volume_ratio`` (weekly volume vs its 20-week average).
+
+    Parameters
+    ----------
+    peers : list[str]
+        Peer ticker prefixes.
+
+    Returns
+    -------
+    list[str]
+        Ordered feature-column names used for training and inference.
+    """
+    cols = list(BASE_FEATURE_COLUMNS)
+    for peer in peers:
+        cols.extend(
+            [
+                f"{peer}_return_1w",
+                f"{peer}_lag_return_1",
+                f"{peer}_rel_strength",
+                f"{peer}_volume_ratio",
+            ]
+        )
+    return cols
+
+
+# Concrete feature list used throughout the script.
+FEATURE_COLUMNS = build_feature_columns()
 
 
 # ── Data loading & preprocessing ──────────────────────────────────────────────
@@ -264,6 +305,40 @@ def engineer_features(df: pd.DataFrame, threshold: float = NEUTRAL_THRESHOLD) ->
     # Volume signal (vs 20-week average)
     df["volume_ratio"] = volume / volume.rolling(20).mean()
 
+    # --- Peer / micro-indicator features (ASML, NVDA, AMD, AMZN, CRM, PLTR) ---
+    # Each peer contributes scale-invariant signals built ONLY from data
+    # available at the close of week t, so there is no lookahead into t+1.
+    # Raw price levels are non-stationary and are deliberately NOT used.
+    msft_return_1w = df["return_1w"]
+    for peer in PEER_TICKERS:
+        close_col = f"{peer}_close"
+        volume_col = f"{peer}_volume"
+
+        if close_col not in df.columns:
+            logger.warning("Peer close column missing, skipping: %s", close_col)
+            continue
+
+        peer_close = df[close_col]
+
+        # Peer's own weekly return (scale-invariant momentum).
+        df[f"{peer}_return_1w"] = peer_close.pct_change(1) * 100
+        # Last week's peer return — usable to predict MSFT's next week.
+        df[f"{peer}_lag_return_1"] = df[f"{peer}_return_1w"].shift(1)
+        # Relative strength: MSFT return minus peer return this week.
+        # Captures whether MSFT is leading or lagging the tech complex.
+        df[f"{peer}_rel_strength"] = msft_return_1w - df[f"{peer}_return_1w"]
+
+        # Peer volume pressure vs its own 20-week average.
+        if volume_col in df.columns:
+            peer_volume = df[volume_col]
+            df[f"{peer}_volume_ratio"] = peer_volume / peer_volume.rolling(20).mean()
+        else:
+            logger.warning(
+                "Peer volume column missing, filling ratio with 1.0: %s",
+                volume_col,
+            )
+            df[f"{peer}_volume_ratio"] = 1.0
+
     # 3-class target: UP (1), DOWN (0), NEUTRAL (2) for NEXT week
     next_return = (close.shift(-1) - close) / close * 100
     threshold_pct = threshold * 100
@@ -330,8 +405,21 @@ def split_and_scale(df: pd.DataFrame):
     tuple
         (X_train_scaled, X_test_scaled, y_train, y_test, scaler).
     """
+    missing = [c for c in FEATURE_COLUMNS if c not in df.columns]
+    if missing:
+        raise KeyError(
+            f"Expected feature columns are missing from the dataframe: {missing}. "
+            "Check that every peer ticker in PEER_TICKERS has a <ticker>_close "
+            "column in the source dataset."
+        )
+
     X = df[FEATURE_COLUMNS]
     y = df["Direction"]
+    logger.info(
+        "Training on %d features (%d peer-derived).",
+        len(FEATURE_COLUMNS),
+        len(FEATURE_COLUMNS) - len(BASE_FEATURE_COLUMNS),
+    )
 
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=TEST_SIZE, shuffle=False  # preserve time order
@@ -349,81 +437,86 @@ def split_and_scale(df: pd.DataFrame):
     return X_train_scaled, X_test_scaled, y_train, y_test, scaler
 
 
-# optuna tuning
-import numpy as np
-import pandas as pd
-import optuna
-from sklearn.model_selection import TimeSeriesSplit
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import f1_score
+# -- Tuning --------------------------------------------------------------------
+def tune_xgboost(X_train_scaled, y_train, n_trials):
+    """Tune XGBoost hyper-parameters with Optuna and TimeSeriesSplit CV.
 
+    Class imbalance is handled with per-sample weights (XGBoost has no
+    ``class_weight`` argument), computed as "balanced" on each training fold.
+    The optimisation target is mean macro-F1 across folds, with ``labels``
+    pinned to the global class set so early time slices missing a class do
+    not distort the score.
 
-def tune_random_forest(
-    X_train_scaled: np.ndarray,
-    y_train: pd.Series,
-    n_trials: int,
-) -> tuple:
+    Parameters
+    ----------
+    X_train_scaled : np.ndarray
+        Scaled training features.
+    y_train : pd.Series
+        Training labels.
+    n_trials : int
+        Number of Optuna trials.
 
+    Returns
+    -------
+    tuple
+        (best_params, best_cv_macro_f1).
+    """
     tscv = TimeSeriesSplit(n_splits=N_SPLITS)
-    # Get all unique classes globally to protect small time windows
     global_classes = np.unique(y_train)
 
-    def rf_objective(trial: optuna.Trial) -> float:
+    def xgb_objective(trial):
         params = {
-            "n_estimators": trial.suggest_int("n_estimators", 50, 500),
-            "max_depth": trial.suggest_int("max_depth", 3, 32),
-            "min_samples_split": trial.suggest_int("min_samples_split", 2, 10),
-            "min_samples_leaf": trial.suggest_int("min_samples_leaf", 1, 10),
-            "class_weight": "balanced",
+            "n_estimators": trial.suggest_int("n_estimators", 100, 500),
+            "max_depth": trial.suggest_int("max_depth", 2, 8),
+            "learning_rate": trial.suggest_float("learning_rate", 0.01, 0.3, log=True),
+            "subsample": trial.suggest_float("subsample", 0.6, 1.0),
+            "colsample_bytree": trial.suggest_float("colsample_bytree", 0.6, 1.0),
+            "min_child_weight": trial.suggest_int("min_child_weight", 1, 10),
+            "gamma": trial.suggest_float("gamma", 0.0, 5.0),
+            "reg_lambda": trial.suggest_float("reg_lambda", 1e-3, 10.0, log=True),
+            "objective": "multi:softmax",
+            "num_class": 3,
+            "eval_metric": "mlogloss",
             "random_state": RANDOM_STATE,
-            "n_jobs": -1,  # Speed up Random Forest training
+            "n_jobs": -1,
         }
 
         scores = []
-
-        # Enumerate to track the fold step index for pruning
         for step, (train_idx, val_idx) in enumerate(tscv.split(X_train_scaled)):
-            model = RandomForestClassifier(**params)
-            model.fit(X_train_scaled[train_idx], y_train.iloc[train_idx])
-            preds = model.predict(X_train_scaled[val_idx])
-
-            # CRUCIAL: Pass 'labels' to handle missing classes in early time slices
+            y_fold = y_train.iloc[train_idx]
+            sample_weight = compute_sample_weight("balanced", y_fold)
+            model = XGBClassifier(**params)
+            model.fit(
+                X_train_scaled[train_idx],
+                y_fold,
+                sample_weight=sample_weight,
+            )
+            preds = model.predict(X_train_scaled[val_idx]).astype(int)
             fold_f1 = f1_score(y_train.iloc[val_idx], preds, average="macro", labels=global_classes)
             scores.append(fold_f1)
-
-            # OPTIONAL: Report intermediate running mean macro-F1 to Optuna
-            running_mean = np.mean(scores)
-            trial.report(running_mean, step=step)
-
-            # Handle pruning (stop trial early if results are terrible)
+            trial.report(float(np.mean(scores)), step=step)
             if trial.should_prune():
                 raise optuna.TrialPruned()
-
         return float(np.mean(scores))
 
-    # Add a pruner to the study to leverage the trial.report() steps
     study = optuna.create_study(
         direction="maximize", pruner=optuna.pruners.MedianPruner(n_startup_trials=5)
     )
-    study.optimize(rf_objective, n_trials=n_trials)
+    study.optimize(xgb_objective, n_trials=n_trials)
 
     logger.info("Best CV macro-F1: %.4f", study.best_value)
     logger.info("Best params: %s", study.best_params)
     return study.best_params, study.best_value
 
 
-# ── Train, evaluate, save ─────────────────────────────────────────────────────
-def train_final_model(
-    best_params: dict,
-    X_train_scaled: np.ndarray,
-    y_train: pd.Series,
-) -> RandomForestClassifier:
-    """Refit a Random Forest with the tuned params on the full training split.
+# -- Train, evaluate, save -----------------------------------------------------
+def train_final_model(best_params, X_train_scaled, y_train):
+    """Refit XGBoost with tuned params on the full training split.
 
     Parameters
     ----------
     best_params : dict
-        Hyper-parameters from :func:`tune_random_forest`.
+        Hyper-parameters from :func:`tune_xgboost`.
     X_train_scaled : np.ndarray
         Scaled training features.
     y_train : pd.Series
@@ -431,29 +524,29 @@ def train_final_model(
 
     Returns
     -------
-    RandomForestClassifier
+    XGBClassifier
         Fitted model.
     """
-    model = RandomForestClassifier(
+    sample_weight = compute_sample_weight("balanced", y_train)
+    model = XGBClassifier(
         **best_params,
-        class_weight="balanced",
+        objective="multi:softmax",
+        num_class=3,
+        eval_metric="mlogloss",
         random_state=RANDOM_STATE,
+        n_jobs=-1,
     )
-    model.fit(X_train_scaled, y_train)
-    logger.info("Final Random Forest refit on full training split.")
+    model.fit(X_train_scaled, y_train, sample_weight=sample_weight)
+    logger.info("Final XGBoost refit on full training split.")
     return model
 
 
-def evaluate_model(
-    model: RandomForestClassifier,
-    X_test_scaled: np.ndarray,
-    y_test: pd.Series,
-) -> dict:
-    """Evaluate the model on the held-out test set.
+def evaluate_model(model, X_test_scaled, y_test):
+    """Evaluate the model on the held-out test set (macro-averaged metrics).
 
     Parameters
     ----------
-    model : RandomForestClassifier
+    model : XGBClassifier
         Fitted model.
     X_test_scaled : np.ndarray
         Scaled test features.
@@ -465,7 +558,7 @@ def evaluate_model(
     dict
         Macro-averaged f1, accuracy, precision, and recall.
     """
-    pred = model.predict(X_test_scaled)
+    pred = model.predict(X_test_scaled).astype(int)
     metrics = {
         "f1": f1_score(y_test, pred, average="macro"),
         "accuracy": accuracy_score(y_test, pred),
@@ -481,21 +574,26 @@ def evaluate_model(
     )
     logger.info("Test-set performance:\n%s", report)
     logger.info("Test macro-F1: %.4f | accuracy: %.4f", metrics["f1"], metrics["accuracy"])
+
+    if hasattr(model, "feature_importances_"):
+        importances = pd.Series(model.feature_importances_, index=FEATURE_COLUMNS).sort_values(
+            ascending=False
+        )
+        logger.info("Top 15 feature importances:\n%s", importances.head(15).to_string())
+        peer_cols = [c for c in FEATURE_COLUMNS if c not in BASE_FEATURE_COLUMNS]
+        logger.info(
+            "Peer features account for %.1f%% of total importance.",
+            100 * importances[peer_cols].sum(),
+        )
     return metrics
 
 
-def save_artifacts(
-    model: RandomForestClassifier,
-    scaler: RobustScaler,
-    best_params: dict,
-    metrics: dict,
-    output_dir: Path,
-) -> Path:
+def save_artifacts(model, scaler, best_params, metrics, output_dir):
     """Persist the model, scaler, feature list, and metadata.
 
     Parameters
     ----------
-    model : RandomForestClassifier
+    model : XGBClassifier
         Fitted model.
     scaler : RobustScaler
         Scaler fitted on the training data.
@@ -509,29 +607,22 @@ def save_artifacts(
     Returns
     -------
     Path
-        Path to the saved model file.
+        Path to the saved model bundle.
     """
     output_dir.mkdir(parents=True, exist_ok=True)
+    model_path = output_dir / "xgboost_weekly.joblib"
+    meta_path = output_dir / "xgboost_weekly_metadata.json"
 
-    model_path = output_dir / "random_forest_weekly.joblib"
-    scaler_path = output_dir / "robust_scaler.joblib"
-    meta_path = output_dir / "random_forest_weekly_metadata.json"
-
-    # Bundle model + scaler + feature order together for safe inference.
     joblib.dump(
-        {
-            "model": model,
-            "scaler": scaler,
-            "feature_columns": FEATURE_COLUMNS,
-        },
+        {"model": model, "scaler": scaler, "feature_columns": FEATURE_COLUMNS},
         model_path,
     )
-    joblib.dump(scaler, scaler_path)
 
     metadata = {
-        "model_type": "RandomForestClassifier",
+        "model_type": "XGBClassifier",
         "prediction": "weekly MSFT direction (0=DOWN, 1=UP, 2=NEUTRAL)",
         "neutral_threshold": NEUTRAL_THRESHOLD,
+        "peer_tickers": PEER_TICKERS,
         "feature_columns": FEATURE_COLUMNS,
         "best_params": best_params,
         "test_metrics": metrics,
@@ -540,24 +631,13 @@ def save_artifacts(
         json.dump(metadata, fh, indent=2)
 
     logger.info("Saved model   -> %s", model_path)
-    logger.info("Saved scaler  -> %s", scaler_path)
     logger.info("Saved metadata-> %s", meta_path)
     return model_path
 
 
-# ── Orchestration ─────────────────────────────────────────────────────────────
-def run_pipeline(data_path: Path, output_dir: Path, n_trials: int) -> None:
-    """Run the full load → preprocess → tune → train → evaluate → save pipeline.
-
-    Parameters
-    ----------
-    data_path : Path
-        Path to the merged modelling dataset.
-    output_dir : Path
-        Directory for saved artifacts.
-    n_trials : int
-        Number of Optuna trials.
-    """
+# -- Orchestration -------------------------------------------------------------
+def run_pipeline(data_path, output_dir, n_trials):
+    """Run load -> preprocess -> tune -> train -> evaluate -> save."""
     df = load_dataset(data_path)
     df = align_trading_days(df)
     df = resample_weekly(df)
@@ -566,17 +646,17 @@ def run_pipeline(data_path: Path, output_dir: Path, n_trials: int) -> None:
 
     X_train_scaled, X_test_scaled, y_train, y_test, scaler = split_and_scale(df)
 
-    best_params, _ = tune_random_forest(X_train_scaled, y_train, n_trials)
+    best_params, _ = tune_xgboost(X_train_scaled, y_train, n_trials)
     model = train_final_model(best_params, X_train_scaled, y_train)
     metrics = evaluate_model(model, X_test_scaled, y_test)
     save_artifacts(model, scaler, best_params, metrics, output_dir)
     logger.info("Done.")
 
 
-def parse_args() -> argparse.Namespace:
+def parse_args():
     """Parse command-line arguments."""
     parser = argparse.ArgumentParser(
-        description="Train the tuned Random Forest for weekly MSFT direction."
+        description="Train the tuned XGBoost for weekly MSFT direction."
     )
     parser.add_argument(
         "--data",
@@ -590,16 +670,11 @@ def parse_args() -> argparse.Namespace:
         default=DEFAULT_OUTPUT_DIR,
         help="Directory to save the model and artifacts.",
     )
-    parser.add_argument(
-        "--n-trials",
-        type=int,
-        default=40,
-        help="Number of Optuna trials",
-    )
+    parser.add_argument("--n-trials", type=int, default=50, help="Number of Optuna trials")
     return parser.parse_args()
 
 
-def main() -> None:
+def main():
     """Script entry point."""
     args = parse_args()
     run_pipeline(args.data, args.output_dir, args.n_trials)

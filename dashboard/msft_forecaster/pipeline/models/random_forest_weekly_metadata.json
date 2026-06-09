@@ -1,0 +1,31 @@
+{
+  "model_type": "RandomForestClassifier",
+  "prediction": "weekly MSFT direction (0=DOWN, 1=UP, 2=NEUTRAL)",
+  "neutral_threshold": 0.01,
+  "feature_columns": [
+    "return_1w",
+    "return_4w",
+    "return_8w",
+    "lag_return_1",
+    "lag_return_2",
+    "rsi_14",
+    "macd",
+    "macd_signal",
+    "macd_hist",
+    "price_range_pct",
+    "rolling_std_5",
+    "volume_ratio"
+  ],
+  "best_params": {
+    "n_estimators": 61,
+    "max_depth": 15,
+    "min_samples_split": 9,
+    "min_samples_leaf": 8
+  },
+  "test_metrics": {
+    "f1": 0.4253968253968254,
+    "accuracy": 0.4375,
+    "precision": 0.4481481481481482,
+    "recall": 0.43080065359477127
+  }
+}

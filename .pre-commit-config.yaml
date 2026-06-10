@@ -2,6 +2,8 @@
 # Runs automatically on `git commit` after `pre-commit install`
 # Manual run across all files: `pre-commit run --all-files`
 
+exclude: '\.(docx|xlsx|pdf|png|jpg|jpeg|gif|ico|woff2?)$'
+
 repos:
   - repo: https://github.com/psf/black
     rev: 24.10.0

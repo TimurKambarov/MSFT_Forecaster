@@ -27,6 +27,8 @@ TICKERS = {
     "CL=F": "oil_prices",
     "^VIX": "vix_data",
     "SPY": "spy_data",
+    "NVDA": "nvda_daily",
+    "AMZN": "amzn_daily",
 }
 
 COL_MAP = {
@@ -41,6 +43,8 @@ COL_MAP = {
     "oil_prices": {"Close": "oil_close"},
     "vix_data": {"Close": "vix"},
     "spy_data": {"Close": "spy_close"},
+    "nvda_daily": {"Close": "nvda_close", "Volume": "nvda_volume"},
+    "amzn_daily": {"Close": "amzn_close", "Volume": "amzn_volume"},
 }
 
 

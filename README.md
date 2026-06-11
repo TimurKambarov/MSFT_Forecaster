@@ -69,6 +69,11 @@ page reflects the latest run on the next request without any manual step.
 
 ```
 .
+│── .github/
+│   ├── workflows
+│   │   ├── update-data.yml        # Weekly data fetch automation .yml file
+│   ├── .keep
+│
 ├── dashboard/                     # The web application (Task 13)
 │   ├── server.py                  # Flask server, serves the dashboard + prediction API
 │   ├── setup_db.py                # Initialises the SQLite database

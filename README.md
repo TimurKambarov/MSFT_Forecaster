@@ -1,7 +1,7 @@
 # MSFT Weekly Direction Forecaster
 
 A machine-learning application that predicts the **weekly** price direction of Microsoft
-(MSFT) stock — **UP**, **DOWN**, or **SAME** — and serves the prediction through a
+(MSFT) stock — **UP**, **DOWN**, or **NEUTRAL** — and serves the prediction through a
 containerised web dashboard.
 
 This is a Year 1 Block D group project (Group 15) for the *Data Science Lifecycle
@@ -19,7 +19,7 @@ the direction of MSFT for the **following** week into one of three classes:
 | --- | --- |
 | **UP** | Next-week return rises beyond the threshold |
 | **DOWN** | Next-week return falls beyond the threshold |
-| **SAME** | Next-week return stays within the flat band |
+| **NEUTRAL** | Next-week return stays within the flat band |
 
 The result is written to a SQLite database and displayed on a Flask + vanilla-JS
 dashboard with custom SVG charts.
@@ -69,6 +69,11 @@ page reflects the latest run on the next request without any manual step.
 
 ```
 .
+│── .github/
+│   ├── workflows
+│   │   ├── update-data.yml        # Weekly data fetch automation .yml file
+│   ├── .keep
+│
 ├── dashboard/                     # The web application (Task 13)
 │   ├── server.py                  # Flask server, serves the dashboard + prediction API
 │   ├── setup_db.py                # Initialises the SQLite database
@@ -146,9 +151,9 @@ documented here because the **code reflects these choices, not the earlier plan*
 
 - Weekly (`W-FRI`) bars carry far less noise than daily moves.
 - Technical indicators such as RSI and MACD are more reliable at the weekly level.
-- We classify into **UP / DOWN / SAME** rather than binary UP/DOWN. Genuinely flat weeks
+- We classify into **UP / DOWN / NEUTRAL** rather than binary UP/DOWN. Genuinely flat weeks
   were previously forced into UP or DOWN, which **inflated accuracy** by rewarding the
-  model for arbitrary calls on no-movement weeks. The explicit SAME class removes that
+  model for arbitrary calls on no-movement weeks. The explicit NEUTRAL class removes that
   distortion.
 
 ### NVDA + AMZN peer features (Gold, Oil, VIX removed)
@@ -179,7 +184,7 @@ The design document specified Streamlit; we changed this deliberately.
 | --- | --- | --- | --- |
 | Blue | `#009FFD` | **UP** | Positive / bullish |
 | Amber | `#DBD56E` | **DOWN** | Caution, not alarm — red was avoided so non-professional users don't over-react to a weak signal |
-| Navy | `#2A2A72` | **SAME** | Neutral, no directional bias |
+| Navy | `#2A2A72` | **NEUTRAL** | Neutral, no directional bias |
 | Dark | `#232528` | Background | Reduces eye strain and makes data elements stand out |
 
 ---
@@ -239,8 +244,8 @@ Docker Compose · Poetry · pytest.
 
 | Member | Primary responsibilities |
 | --- | --- |
-| Gergely Gádor | Scrum Master · methodology · legal compliance (Task 4.2) |
-| Lucan den Dekker | Application design (Task 7) · application development (Task 13) |
+| Gergely Gádor | Scrum Master, methodology, legal compliance (Task 4.2) |
+| Lucan den Dekker | Application design (Task 7), application development (Task 13) |
 | Qusai Al Qusaily | Database management (Task 8) |
 | Timur Kambarov | Data processing pipelines (Task 9) |
 

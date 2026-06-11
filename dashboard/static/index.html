@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/style.css?v=26" />
+  <link rel="stylesheet" href="/static/style.css?v=28" />
 </head>
 <body>
 
@@ -147,13 +147,13 @@
       <section class="page" id="page-home">
         <div class="page-inner">
           <div class="page-hero">
-            <h1 class="page-h1">Day to Day Stock Price Predictor</h1>
-            <p class="page-lead">Next-day directional prediction for MSFT powered by machine learning.</p>
+            <h1 class="page-h1">Weekly Stock Direction Predictor</h1>
+            <p class="page-lead">Next-week directional prediction for MSFT powered by machine learning.</p>
           </div>
 
           <div class="pred-card" id="pred-card">
             <div class="pred-card-left">
-              <div class="pred-date-label" id="pred-date-label">Tomorrow</div>
+              <div class="pred-date-label" id="pred-date-label">Next week</div>
               <div class="pred-circle" id="pred-circle">
                 <div class="pred-circle-inner">
                   <div class="pred-arrow-icon" id="pred-arrow-icon">↑</div>
@@ -186,12 +186,12 @@
             <div class="tile">
               <div class="tile-label">Prediction Date</div>
               <div class="tile-val" id="tile-pred-date">–</div>
-              <div class="tile-sub">Next trading session</div>
+              <div class="tile-sub">Next trading week</div>
             </div>
             <div class="tile">
               <div class="tile-label">Model Used</div>
-              <div class="tile-val tile-val-sm" id="tile-model-name">XGBoost (it3)</div>
-              <div class="tile-sub">xgboost_lucan_it3</div>
+              <div class="tile-val tile-val-sm" id="tile-model-name">XGBoost Weekly</div>
+              <div class="tile-sub">xgboost_weekly</div>
             </div>
           </div>
 
@@ -199,7 +199,7 @@
             <div class="chart-block-head">
               <div>
                 <div class="chart-block-title">MSFT · Last 30 trading days</div>
-                <div class="chart-block-sub">Close price · USD · with next-day prediction annotated</div>
+                <div class="chart-block-sub">Close price · USD · with next-week prediction annotated</div>
               </div>
             </div>
             <div style="position:relative">
@@ -238,7 +238,7 @@
         <div class="page-inner">
           <div class="section-head">
             <div class="page-h1">Historical Price Analysis</div>
-            <div class="page-lead">Explore MSFT closing price and overlay macro indicators.</div>
+            <div class="page-lead">Explore MSFT closing price and overlay historical market indicators.</div>
           </div>
 
 
@@ -309,7 +309,7 @@
             <div class="chart-block split-flex">
               <div class="chart-block-head">
                 <div>
-                  <div class="chart-block-title">Daily Return %</div>
+                  <div class="chart-block-title">Daily Return % (Historical)</div>
                   <div class="chart-block-sub">
                     <span style="color:#009FFD">■ positive</span>&nbsp;·&nbsp;<span style="color:#DBD56E">■ negative</span>
                   </div>
@@ -328,7 +328,7 @@
             <div class="chart-block-head">
               <div>
                 <div class="chart-block-title">Prediction History</div>
-                <div class="chart-block-sub">Recent UP/DOWN predictions vs actual outcome &nbsp;·&nbsp; <span class="pred-hist-dummy-note" style="color:var(--amber);font-size:10px"></span></div>
+                <div class="chart-block-sub">Recent UP / DOWN / SAME predictions vs actual outcome &nbsp;·&nbsp; <span class="pred-hist-dummy-note" style="color:var(--amber);font-size:10px"></span></div>
               </div>
               <div id="pred-hist-accuracy" style="font-family:var(--mono);font-size:13px;color:var(--text-muted)"></div>
             </div>
@@ -344,11 +344,11 @@
           <div class="section-head section-head-flex">
             <div>
               <div class="page-h1">Model Performance</div>
-              <div class="page-lead">XGBoost (it3) · 471 test days · Jan 2024 – Apr 2026</div>
+              <div class="page-lead">XGBoost Weekly · 48 test weeks · Jun 2025 – May 2026</div>
             </div>
             <div class="active-model-row" id="active-model-row">
               <span class="active-model-dot"></span>
-              <span class="active-model-name" id="active-model-name">xgboost_lucan_it3</span>
+              <span class="active-model-name" id="active-model-name">xgboost_weekly</span>
               <span class="active-model-tag">active</span>
             </div>
           </div>
@@ -356,41 +356,38 @@
           <div class="metric-tiles-row">
             <div class="tile big-tile">
               <div class="tile-label">Accuracy</div>
-              <div class="tile-val tile-val-big tile-mono tile-accent" id="m-accuracy">0.5223</div>
-              <div class="tile-sub">246 / 471 correct</div>
+              <div class="tile-val tile-val-big tile-mono tile-accent" id="m-accuracy">0.3958</div>
+              <div class="tile-sub">19 / 48 correct</div>
             </div>
             <div class="tile big-tile">
               <div class="tile-label">Precision</div>
-              <div class="tile-val tile-val-big tile-mono" id="m-precision">0.5272</div>
-              <div class="tile-sub">True UP / predicted UP</div>
+              <div class="tile-val tile-val-big tile-mono" id="m-precision">0.4459</div>
+              <div class="tile-sub">Weighted avg precision</div>
             </div>
             <div class="tile big-tile">
               <div class="tile-label">Recall</div>
-              <div class="tile-val tile-val-big tile-mono" id="m-recall">0.5223</div>
-              <div class="tile-sub">True UP / actual UP</div>
+              <div class="tile-val tile-val-big tile-mono" id="m-recall">0.3877</div>
+              <div class="tile-sub">Weighted avg recall</div>
             </div>
             <div class="tile big-tile">
               <div class="tile-label">F1 Score</div>
-              <div class="tile-val tile-val-big tile-mono tile-accent" id="m-f1">0.5222</div>
-              <div class="tile-sub">harmonic mean</div>
+              <div class="tile-val tile-val-big tile-mono tile-accent" id="m-f1">0.3763</div>
+              <div class="tile-sub">Weighted harmonic mean</div>
             </div>
           </div>
 
           <div class="split-row">
             <div class="chart-block cm-block">
               <div class="chart-block-title">Confusion Matrix</div>
-              <div class="chart-block-sub" style="margin-bottom:8px">Counts on the held-out test set</div>
-              <svg id="svg-confusion" viewBox="0 0 380 240" width="380" height="240"></svg>
+              <div class="chart-block-sub" style="margin-bottom:8px">Predicted vs actual direction on held-out test set (48 weeks)</div>
+              <svg id="svg-confusion" viewBox="0 0 400 300" width="400" height="300"></svg>
               <div class="cm-legend">
-                <span>TN True Negative</span>
-                <span>FP False Positive</span>
-                <span>FN False Negative</span>
-                <span>TP True Positive</span>
+                <span>Diagonal = correct predictions</span>
               </div>
             </div>
             <div class="chart-block split-flex">
               <div class="chart-block-title">Model Comparison · F1 Score</div>
-              <div class="chart-block-sub" style="margin-bottom:8px">XGBoost (highlighted) achieves the best F1 score across all three models.</div>
+              <div class="chart-block-sub" style="margin-bottom:8px">XGBoost Weekly (highlighted) uses 20 peer features and 48 test weeks · Random Forest scores higher F1 but on only 32 weeks.</div>
               <svg id="svg-model-compare" viewBox="0 0 560 220" width="100%" height="220"></svg>
             </div>
           </div>
@@ -401,7 +398,7 @@
                 <span style="color:#009FFD;font-size:13px">▼</span>
                 <div>
                   <div class="chart-block-title">Feature Importance</div>
-                  <div class="chart-block-sub">Top 10 features ranked by XGBoost gain · scores are evenly distributed, indicating no single dominant feature</div>
+                  <div class="chart-block-sub">All 20 features ranked by XGBoost importance · nvda_rel_strength and MACD are the strongest predictors</div>
                 </div>
               </div>
             </div>
@@ -422,13 +419,15 @@
 
           <div class="card-block">
             <p class="about-text">
-              The <strong>Day to Day Stock Price Predictor</strong> estimates whether
-              Microsoft's (MSFT) closing price will move <span class="accent-text">up</span> or
-              <span class="amber-text"> down</span> on the next trading day.
-              It uses an <strong>XGBoost classifier (it3)</strong> trained on 14 technical and macro features.
-              Inputs include MSFT daily prices and four macro signals
-              (Gold, Crude Oil, VIX, and S&amp;P 500). The dashboard is built for retail investors who
-              want a simple directional signal without wading through code or formulas.
+              The <strong>Weekly Stock Direction Predictor</strong> estimates whether
+              Microsoft's (MSFT) closing price will move <span class="accent-text">up</span>,
+              <span class="amber-text">down</span>, or stay <span style="color:#2A2A72">same</span> over the next trading week.
+              It uses an <strong>XGBoost classifier</strong> trained on 20 features:
+              12 MSFT technical features and 8 peer features from NVDA and AMZN.
+              MSFT inputs include multi-week returns, MACD, RSI, price range, rolling volatility, and volume ratio.
+              Peer inputs capture relative strength and volume momentum against NVDA and AMZN.
+              The dashboard is built for retail investors who want a simple weekly directional signal
+              without wading through code or formulas.
             </p>
           </div>
 
@@ -457,11 +456,9 @@
                 <tr><th>Asset</th><th>Source</th><th>Format</th><th>Update Frequency</th></tr>
               </thead>
               <tbody>
-                <tr><td class="td-accent td-mono">MSFT</td><td>Yahoo Finance (yfinance API)</td><td>CSV / DataFrame</td><td>Daily · post-close 16:00 ET</td></tr>
-                <tr><td class="td-accent td-mono">Gold (GLD)</td><td>Yahoo Finance (yfinance API)</td><td>CSV / DataFrame</td><td>Daily · post-close 16:00 ET</td></tr>
-                <tr><td class="td-accent td-mono">Crude Oil (CL=F)</td><td>Yahoo Finance (yfinance API)</td><td>CSV / DataFrame</td><td>Daily · post-close 17:00 ET</td></tr>
-                <tr><td class="td-accent td-mono">VIX (^VIX)</td><td>CBOE via yfinance</td><td>CSV / DataFrame</td><td>Daily · post-close 16:15 ET</td></tr>
-                <tr><td class="td-accent td-mono">S&amp;P 500 (SPY)</td><td>Yahoo Finance (yfinance API)</td><td>CSV / DataFrame</td><td>Daily · post-close 16:00 ET</td></tr>
+                <tr><td class="td-accent td-mono">MSFT</td><td>Yahoo Finance (yfinance API)</td><td>CSV / DataFrame</td><td>Daily · post-close 16:00 ET · model target + display</td></tr>
+                <tr><td class="td-accent td-mono">NVDA</td><td>Yahoo Finance (yfinance API)</td><td>CSV / DataFrame</td><td>Daily · post-close 16:00 ET · peer model features + display</td></tr>
+                <tr><td class="td-accent td-mono">AMZN</td><td>Yahoo Finance (yfinance API)</td><td>CSV / DataFrame</td><td>Daily · post-close 16:00 ET · peer model features + display</td></tr>
               </tbody>
             </table>
           </div>
@@ -525,7 +522,7 @@
             <label class="settings-toggle"><input type="checkbox" id="csv-prices" checked><span class="settings-toggle-track"><span class="settings-toggle-thumb"></span></span></label>
           </div>
           <div class="settings-row settings-row-inline" style="margin-top:10px">
-            <div class="settings-row-label">Macro indicators (Gold, Oil, VIX, S&amp;P 500)</div>
+            <div class="settings-row-label">Historical overlays (Gold, Oil, VIX)</div>
             <label class="settings-toggle"><input type="checkbox" id="csv-indicators" checked><span class="settings-toggle-track"><span class="settings-toggle-thumb"></span></span></label>
           </div>
           <div class="settings-row settings-row-inline" style="margin-top:10px">
@@ -563,6 +560,6 @@
     </div>
   </div>
 
-  <script src="/static/app.js?v=36"></script>
+  <script src="/static/app.js?v=47"></script>
 </body>
 </html>

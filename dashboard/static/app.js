@@ -549,16 +549,26 @@ const SAMPLE_HISTORY = [
 ];
 
 const FEATURE_IMPORTANCE = [
-  { name: 'close_to_sma10_pct', pct: 0.0766 },
-  { name: 'lag_spy_return',     pct: 0.0746 },
-  { name: 'daily_return',       pct: 0.0740 },
-  { name: 'lag_oil_return',     pct: 0.0727 },
-  { name: 'volume_ratio',       pct: 0.0723 },
-  { name: 'momentum_5',         pct: 0.0721 },
-  { name: 'lag_gold_return',    pct: 0.0721 },
-  { name: 'sma_crossover',      pct: 0.0718 },
-  { name: 'lag_vix_1',          pct: 0.0712 },
-  { name: 'rolling_std_5',      pct: 0.0702 },
+  { name: 'nvda_rel_strength',  pct: 0.0689 },
+  { name: 'macd',               pct: 0.0599 },
+  { name: 'amzn_volume_ratio',  pct: 0.0558 },
+  { name: 'return_8w',          pct: 0.0538 },
+  { name: 'amzn_return_1w',     pct: 0.0529 },
+  { name: 'rolling_std_5',      pct: 0.0527 },
+  { name: 'lag_return_2',       pct: 0.0525 },
+  { name: 'nvda_lag_return_1',  pct: 0.0518 },
+  { name: 'amzn_lag_return_1',  pct: 0.0507 },
+  { name: 'return_4w',          pct: 0.0502 },
+  { name: 'amzn_rel_strength',  pct: 0.0496 },
+  { name: 'macd_hist',          pct: 0.0490 },
+  { name: 'nvda_volume_ratio',  pct: 0.0483 },
+  { name: 'nvda_return_1w',     pct: 0.0464 },
+  { name: 'rsi_14',             pct: 0.0462 },
+  { name: 'price_range_pct',    pct: 0.0445 },
+  { name: 'lag_return_1',       pct: 0.0443 },
+  { name: 'return_1w',          pct: 0.0438 },
+  { name: 'macd_signal',        pct: 0.0414 },
+  { name: 'volume_ratio',       pct: 0.0373 },
 ];
 
 // ── Settings ───────────────────────────────────────────────────────────────────
@@ -591,7 +601,7 @@ const I18N = {
     predictions: 'Predictions', 'show-conf-bar': 'Show confidence bar',
     'auto-refresh': 'Auto-refresh data', 'auto-refresh-note': 'Reload predictions every 15 min',
     'show-disclaimer': 'Show disclaimer',
-    tomorrow: 'Tomorrow', 'model-conf': 'Accuracy', 'ens-label': 'Model breakdown',
+    tomorrow: 'Next week', 'model-conf': 'Accuracy', 'ens-label': 'Model breakdown',
   },
   nl: {
     settings: 'Instellingen', display: 'Weergave', currency: 'Valuta',
@@ -601,7 +611,7 @@ const I18N = {
     predictions: 'Voorspellingen', 'show-conf-bar': 'Betrouwbaarheidsbalk tonen',
     'auto-refresh': 'Data automatisch verversen', 'auto-refresh-note': 'Herlaad voorspellingen elke 15 min',
     'show-disclaimer': 'Disclaimer tonen',
-    tomorrow: 'Morgen', 'model-conf': 'Nauwkeurigheid', 'ens-label': 'Model overzicht',
+    tomorrow: 'Volgende week', 'model-conf': 'Nauwkeurigheid', 'ens-label': 'Model overzicht',
   },
   de: {
     settings: 'Einstellungen', display: 'Anzeige', currency: 'Währung',
@@ -611,7 +621,7 @@ const I18N = {
     predictions: 'Vorhersagen', 'show-conf-bar': 'Konfidenzbalken anzeigen',
     'auto-refresh': 'Daten automatisch aktualisieren', 'auto-refresh-note': 'Vorhersagen alle 15 Min neu laden',
     'show-disclaimer': 'Haftungsausschluss anzeigen',
-    tomorrow: 'Morgen', 'model-conf': 'Genauigkeit', 'ens-label': 'Modell-Übersicht',
+    tomorrow: 'Nächste Woche', 'model-conf': 'Genauigkeit', 'ens-label': 'Modell-Übersicht',
   },
   fr: {
     settings: 'Paramètres', display: 'Affichage', currency: 'Devise',
@@ -621,7 +631,7 @@ const I18N = {
     predictions: 'Prédictions', 'show-conf-bar': 'Afficher la barre de confiance',
     'auto-refresh': 'Actualisation automatique', 'auto-refresh-note': 'Recharger les prédictions toutes les 15 min',
     'show-disclaimer': 'Afficher l\'avertissement',
-    tomorrow: 'Demain', 'model-conf': 'Précision', 'ens-label': 'Détail du modèle',
+    tomorrow: 'Semaine prochaine', 'model-conf': 'Précision', 'ens-label': 'Détail du modèle',
   },
   es: {
     settings: 'Configuración', display: 'Visualización', currency: 'Moneda',
@@ -631,7 +641,7 @@ const I18N = {
     predictions: 'Predicciones', 'show-conf-bar': 'Mostrar barra de confianza',
     'auto-refresh': 'Actualización automática', 'auto-refresh-note': 'Recargar predicciones cada 15 min',
     'show-disclaimer': 'Mostrar descargo de responsabilidad',
-    tomorrow: 'Mañana', 'model-conf': 'Precisión', 'ens-label': 'Desglose del modelo',
+    tomorrow: 'Próxima semana', 'model-conf': 'Precisión', 'ens-label': 'Desglose del modelo',
   },
 };
 
@@ -732,7 +742,7 @@ function initSettings() {
 }
 
 // ── State ──────────────────────────────────────────────────────────────────────
-let overlayState = { msft: true, gold: true, oil: true, vix: true };
+let overlayState = { msft: true, nvda: true, amzn: true, gold: false, oil: false, vix: false };
 let historyData  = [];
 let filteredData = [];
 
@@ -1176,12 +1186,14 @@ function renderPredictionHistory(res) {
   if (!table) return;
   if (!res || !res.data?.length) { table.innerHTML = '<p style="padding:12px;color:var(--text-dim)">No data available.</p>'; return; }
 
-  if (accEl) accEl.textContent = `Accuracy: ${res.accuracy}%`;
-  if (note)  note.textContent  = res.has_dummy ? '★ dummy predictions' : '';
+  if (accEl) accEl.textContent = res.accuracy != null ? `Accuracy: ${res.accuracy}%` : '';
+  if (note)  note.textContent  = res.has_dummy ? '★ estimated predictions' : '';
 
   const dir = (d) => d === 1
     ? '<span class="ph-dir ph-up">↑ UP</span>'
-    : '<span class="ph-dir ph-down">↓ DOWN</span>';
+    : d === 2
+      ? '<span class="ph-dir ph-neutral">– SAME</span>'
+      : '<span class="ph-dir ph-down">↓ DOWN</span>';
 
   table.innerHTML = `
     <table>
@@ -1203,7 +1215,7 @@ function renderPredictionHistory(res) {
             <td>${dir(r.predicted_direction)} ${r.is_dummy ? '<span class="ph-dummy">(est.)</span>' : ''}</td>
             <td class="ph-conf">${r.confidence}%</td>
             <td>${dir(r.actual_direction)}</td>
-            <td><span class="ph-badge ${r.correct ? 'correct' : 'incorrect'}">${r.correct ? '● Correct' : '● Wrong'}</span></td>
+            <td><span class="ph-badge ${r.correct === null ? 'neutral' : (r.correct ? 'correct' : 'incorrect')}">${r.correct === null ? '– Same' : (r.correct ? '● Correct' : '● Wrong')}</span></td>
           </tr>`).join('')}
       </tbody>
     </table>`;
@@ -1231,6 +1243,8 @@ function renderHistoryChart(data, overlays) {
     return slice.reduce((a, b) => a + b, 0) / slice.length;
   });
   const pts      = smooth(fitToRange(data.map(r => r.close)));
+  const nvdaPts  = smooth(fitToRange(data.map(r => r.nvda_close)));
+  const amznPts  = smooth(fitToRange(data.map(r => r.amzn_close)));
   const goldPts  = smooth(fitToRange(data.map(r => r.gold_close)));
   const oilPts   = smooth(fitToRange(data.map(r => r.oil_close)));
   const vixPts   = smooth(fitToRange(data.map(r => r.vix)));
@@ -1274,9 +1288,11 @@ function renderHistoryChart(data, overlays) {
     svg.append(svgEl('path', { d: `${areaPts} L ${xs(n-1).toFixed(1)} ${H-40} L ${xs(0).toFixed(1)} ${H-40} Z`, fill:'url(#lgh)' }));
     svg.append(svgEl('path', { d: mkPath(pts), fill:'none', stroke:C.accent, 'stroke-width':'2' }));
   }
+  if (overlays.nvda) svg.append(svgEl('path', { d: mkPath(nvdaPts), fill:'none', stroke:'#DBD56E',  'stroke-width':'1.5', 'stroke-dasharray':'5 2', opacity:'0.85' }));
+  if (overlays.amzn) svg.append(svgEl('path', { d: mkPath(amznPts), fill:'none', stroke:'#2A2A72',  'stroke-width':'1.5', 'stroke-dasharray':'5 2', opacity:'0.85' }));
   if (overlays.gold) svg.append(svgEl('path', { d: mkPath(goldPts), fill:'none', stroke:C.amber,    'stroke-width':'1.5', 'stroke-dasharray':'4 3', opacity:'0.85' }));
   if (overlays.oil)  svg.append(svgEl('path', { d: mkPath(oilPts),  fill:'none', stroke:C.red,      'stroke-width':'1.5', 'stroke-dasharray':'4 3', opacity:'0.7' }));
-  if (overlays.vix)  svg.append(svgEl('path', { d: mkPath(vixPts),  fill:'none', stroke:'#8B5CF6',  'stroke-width':'1.5', 'stroke-dasharray':'4 3', opacity:'0.6' }));
+  if (overlays.vix)  svg.append(svgEl('path', { d: mkPath(vixPts),  fill:'none', stroke:'#2A2A72',  'stroke-width':'1.5', 'stroke-dasharray':'4 3', opacity:'0.6' }));
 
   // Crosshair vertical line
   const xhairG = svgEl('g'); xhairG.style.pointerEvents = 'none'; xhairG.setAttribute('visibility','hidden');
@@ -1373,6 +1389,14 @@ function initHistoryInteraction() {
       <span class="hist-tip-val">${sym}${(d.close * rate).toFixed(dec)}</span>
       <span class="hist-tip-pct" style="color:${col(msftPct)}">${sign(msftPct)}</span>
     </div>`;
+    if (overlayState.nvda && d.nvda_close && base.nvda_close) {
+      const p = (d.nvda_close - base.nvda_close) / base.nvda_close * 100;
+      html += `<div class="hist-tip-row"><span class="hist-tip-key" style="color:#DBD56E">NVDA</span><span class="hist-tip-val">${sym}${(d.nvda_close * rate).toFixed(dec)}</span><span class="hist-tip-pct" style="color:${col(p)}">${sign(p)}</span></div>`;
+    }
+    if (overlayState.amzn && d.amzn_close && base.amzn_close) {
+      const p = (d.amzn_close - base.amzn_close) / base.amzn_close * 100;
+      html += `<div class="hist-tip-row"><span class="hist-tip-key" style="color:#2A2A72">AMZN</span><span class="hist-tip-val">${sym}${(d.amzn_close * rate).toFixed(dec)}</span><span class="hist-tip-pct" style="color:${col(p)}">${sign(p)}</span></div>`;
+    }
     if (overlayState.gold && d.gold_close && base.gold_close) {
       const p = (d.gold_close - base.gold_close) / base.gold_close * 100;
       html += `<div class="hist-tip-row"><span class="hist-tip-key" style="color:${C.amber}">Gold</span><span class="hist-tip-val">${sym}${(d.gold_close * rate).toFixed(dec)}</span><span class="hist-tip-pct" style="color:${col(p)}">${sign(p)}</span></div>`;
@@ -1383,7 +1407,7 @@ function initHistoryInteraction() {
     }
     if (overlayState.vix && d.vix && base.vix) {
       const p = (d.vix - base.vix) / base.vix * 100;
-      html += `<div class="hist-tip-row"><span class="hist-tip-key" style="color:#8B5CF6">VIX</span><span class="hist-tip-val">${d.vix.toFixed(1)}</span><span class="hist-tip-pct" style="color:${col(-p)}">${sign(p)}</span></div>`;
+      html += `<div class="hist-tip-row"><span class="hist-tip-key" style="color:#2A2A72">VIX</span><span class="hist-tip-val">${d.vix.toFixed(1)}</span><span class="hist-tip-pct" style="color:${col(-p)}">${sign(p)}</span></div>`;
     }
 
     const tip = document.getElementById('hist-tooltip');
@@ -1456,22 +1480,29 @@ function renderReturns(data) {
   const W = 760, H = 150;
   const slice = data.slice(-61);
   const vals = slice.slice(1).map((r, i) => ((r.close - slice[i].close) / slice[i].close) * 100);
-  const maxAbs = 3.5;
+  const rawMax = Math.max(...vals.map(Math.abs));
+  const maxAbs = Math.max(2, Math.ceil(rawMax * 2) / 2);
   const bw = (W - 100) / vals.length;
   const xs = i => 60 + i * bw;
-  const mid = H / 2;
+  const mid = H / 2;               // 75
+  const maxH = mid - 14;           // 61 — bar max height, labels align to this
 
-  svg.append(svgEl('line', { x1:60, x2:W-40, y1:mid, y2:mid, stroke:C.line }));
+  // Gridlines at scale extremes and zero
+  svg.append(svgEl('line', { x1:60, x2:W-40, y1:mid-maxH, y2:mid-maxH, stroke:C.lineSoft, 'stroke-dasharray':'2,4' }));
+  svg.append(svgEl('line', { x1:60, x2:W-40, y1:mid,      y2:mid,      stroke:C.line }));
+  svg.append(svgEl('line', { x1:60, x2:W-40, y1:mid+maxH, y2:mid+maxH, stroke:C.lineSoft, 'stroke-dasharray':'2,4' }));
 
   vals.forEach((v, i) => {
-    const h = Math.max((Math.abs(v) / maxAbs) * (H/2 - 16), 1);
+    const h = Math.max((Math.abs(v) / maxAbs) * maxH, 1);
     const y = v >= 0 ? mid - h : mid;
-    svg.append(svgEl('rect', { x: xs(i).toFixed(1), y: y.toFixed(1), width: Math.max(bw-2,1).toFixed(1), height: h.toFixed(1), fill: v >= 0 ? C.accent : C.amber }));
+    svg.append(svgEl('rect', { x: xs(i).toFixed(1), y: y.toFixed(1), width: Math.max(bw-2,1).toFixed(1), height: h.toFixed(1), fill: v >= 0 ? '#009FFD' : '#DBD56E' }));
   });
 
-  svgText(svg, 14, mid+4, '0%',  { mono:true });
-  svgText(svg, 14, 20,    '+3%', { mono:true });
-  svgText(svg, 14, H-8,   '-3%', { mono:true });
+  const lbl = v => `${Math.abs(v) >= 10 ? v.toFixed(0) : v.toFixed(1)}%`;
+  // Labels sit the same distance (9px) below their respective gridline
+  svgText(svg, 8, mid - maxH + 9, `+${lbl(maxAbs)}`, { mono:true, size:'9' });
+  svgText(svg, 8, mid + 5,         '0.0%',            { mono:true, size:'9' });
+  svgText(svg, 8, mid + maxH + 9, `-${lbl(maxAbs)}`, { mono:true, size:'9' });
 }
 
 // ── Page 2 — Summary stats ─────────────────────────────────────────────────────
@@ -1480,19 +1511,32 @@ function renderSummaryStats(data) {
   if (!el || !data.length) return;
   const closes  = data.map(r => r.close);
   const rets    = closes.slice(1).map((c, i) => ((c - closes[i]) / closes[i]) * 100);
+  if (!rets.length) return;
   const mean    = rets.reduce((a,b) => a+b, 0) / rets.length;
   const vol     = Math.sqrt(rets.reduce((a,b) => a + Math.pow(b-mean,2), 0) / rets.length);
   const maxR    = Math.max(...rets), minR = Math.min(...rets);
   const maxDate = data[rets.indexOf(maxR)+1]?.date?.slice(0,10) ?? '';
   const minDate = data[rets.indexOf(minR)+1]?.date?.slice(0,10) ?? '';
   const sign    = v => v >= 0 ? '+' : '';
+
+  // Max Drawdown: peak-to-trough over the displayed period
+  let peak = closes[0], maxDD = 0;
+  closes.forEach(c => {
+    if (c > peak) peak = c;
+    const dd = (peak - c) / peak * 100;
+    if (dd > maxDD) maxDD = dd;
+  });
+
+  // Annualised Sharpe (252 trading days, risk-free ≈ 0)
+  const sharpe = vol > 0 ? (mean / vol) * Math.sqrt(252) : 0;
+
   const stats = [
-    ['Mean Return',   `${sign(mean)}${mean.toFixed(3)}%`,             C.accent],
-    ['Volatility (σ)',`${vol.toFixed(2)}%`,                           C.text],
-    ['Max Drawdown',  '−34.6%',                                       C.amber],
-    ['Best Day',      `+${maxR.toFixed(2)}% · ${maxDate}`,           C.accent],
-    ['Worst Day',     `${minR.toFixed(2)}% · ${minDate}`,            C.red],
-    ['Sharpe (3y)',   '1.12',                                         C.text],
+    ['Mean Return',    `${sign(mean)}${mean.toFixed(3)}%`,          C.accent],
+    ['Volatility (σ)', `${vol.toFixed(2)}%`,                        C.text],
+    ['Max Drawdown',   `−${maxDD.toFixed(1)}%`,                     C.amber],
+    ['Best Day',       `+${maxR.toFixed(2)}% · ${maxDate}`,         C.accent],
+    ['Worst Day',      `${minR.toFixed(2)}% · ${minDate}`,          C.red],
+    ['Sharpe (ann.)',  sharpe.toFixed(2),                            C.text],
   ];
   el.innerHTML = stats.map(([k, v, col], i) => `
     <div class="stat-row" ${i===5?'style="border-bottom:none"':''}>
@@ -1504,20 +1548,18 @@ function renderSummaryStats(data) {
 
 // ── Page 2 — Overlay toggles ───────────────────────────────────────────────────
 const OVERLAY_INFO = {
-  msft: 'Microsoft Corporation (MSFT)\nTech giant — cloud, software & AI.\nWeight in S&P 500: ~7%.',
-  gold: 'Gold Futures (GC=F)\nSafe-haven asset. Rises during\nmarket uncertainty & inflation.',
-  oil:  'Crude Oil Futures (CL=F)\nWTI benchmark. Sensitive to\ngeopolitics and global demand.',
-  vix:  'CBOE Volatility Index (VIX)\n"Fear gauge" of the market.\nHigh VIX = high expected volatility.',
+  msft: 'Microsoft Corporation (MSFT)\nThe predicted stock.\nTech giant — cloud, software & AI.',
+  nvda: 'NVIDIA Corporation (NVDA)\nPeer feature used by the model.\nRelative strength vs MSFT is the #1 predictor.',
+  amzn: 'Amazon.com (AMZN)\nPeer feature used by the model.\nVolume momentum and relative return vs MSFT.',
 };
 
 function renderOverlayToggles() {
   const el = document.getElementById('overlay-toggles');
   if (!el) return;
   const items = [
-    { key:'msft', label:'MSFT',      color: C.accent  },
-    { key:'gold', label:'Gold (GLD)', color: C.amber   },
-    { key:'oil',  label:'Crude Oil',  color: C.red     },
-    { key:'vix',  label:'VIX',        color: '#8B5CF6' },
+    { key:'msft', label:'MSFT', color: C.accent  },
+    { key:'nvda', label:'NVDA', color: '#DBD56E' },
+    { key:'amzn', label:'AMZN', color: '#2A2A72' },
   ];
   el.innerHTML = items.map(t => `
     <div class="overlay-toggle ${overlayState[t.key]?'on':''}" data-key="${t.key}" style="--clr:${t.color}">
@@ -1545,32 +1587,41 @@ function renderOverlayToggles() {
   });
 }
 
-// ── Page 3 — Confusion matrix ──────────────────────────────────────────────────
+// ── Page 3 — Confusion matrix (3×3) ───────────────────────────────────────────
 function renderConfusionMatrix() {
   const svg = clearSvg('svg-confusion');
   if (!svg) return;
-  const cells = [
-    { label:'TN', v:123, cx:0, cy:0, c:C.accent, a:0.85 },
-    { label:'FP', v:97,  cx:1, cy:0, c:C.amber,  a:0.45 },
-    { label:'FN', v:128, cx:0, cy:1, c:C.amber,  a:0.4  },
-    { label:'TP', v:123, cx:1, cy:1, c:C.accent, a:1    },
+
+  // Rows = actual, cols = predicted. Labels: 0=DOWN, 1=UP, 2=SAME
+  // XGBoost Weekly · 48 test weeks · diagonal sum = 19 · total = 48
+  const matrix = [
+    [ 6, 5, 5],  // actual DOWN  (16 total)
+    [ 5, 8, 7],  // actual UP    (20 total)
+    [ 3, 4, 5],  // actual SAME  (12 total)
   ];
-  const cW=150, cH=90, ox=80, oy=28;
+  const labels = ['DOWN', 'UP', 'SAME'];
+  const cW = 96, cH = 72, ox = 90, oy = 44;
 
-  svgText(svg, ox+cW,       14, 'PREDICTED', { anchor:'middle', mono:true });
-  svgText(svg, ox+cW/2,     26, 'DOWN',      { anchor:'middle', fill:C.textMuted, size:'11' });
-  svgText(svg, ox+cW+cW/2,  26, 'UP',        { anchor:'middle', fill:C.textMuted, size:'11' });
-  svgText(svg, 14,    oy+cH,    'ACTUAL',    { mono:true });
-  svgText(svg, 70, oy+cH/2+4,  'DOWN',      { anchor:'end', fill:C.textMuted, size:'11' });
-  svgText(svg, 70, oy+cH+cH/2+4,'UP',       { anchor:'end', fill:C.textMuted, size:'11' });
+  svgText(svg, ox + cW * 1.5, 14, 'PREDICTED', { anchor:'middle', mono:true });
+  labels.forEach((lbl, i) => {
+    svgText(svg, ox + i * cW + cW / 2, 32, lbl, { anchor:'middle', fill:C.textMuted, size:'10' });
+    svgText(svg, ox - 8, oy + i * cH + cH / 2 + 4, lbl, { anchor:'end', fill:C.textMuted, size:'10' });
+  });
+  svgText(svg, 12, oy + cH * 1.5, 'ACTUAL', { mono:true });
 
-  cells.forEach(cell => {
-    const rx = ox + cell.cx * cW, ry = oy + cell.cy * cH;
-    svg.append(svgEl('rect', { x:rx, y:ry, width:cW-2, height:cH-2, fill:cell.c, 'fill-opacity':cell.a, stroke:C.lineSoft }));
-    const t1 = svgEl('text', { x:rx+cW/2, y:ry+cH/2-4, 'text-anchor':'middle', fill:'#0a1117', 'font-size':'22', 'font-weight':'700', 'font-family':SANS });
-    t1.textContent = cell.v; svg.append(t1);
-    const t2 = svgEl('text', { x:rx+cW/2, y:ry+cH/2+14, 'text-anchor':'middle', fill:'#0a1117', 'font-size':'10', 'font-family':MONO, opacity:'0.7' });
-    t2.textContent = cell.label; svg.append(t2);
+  matrix.forEach((row, cy) => {
+    row.forEach((v, cx) => {
+      const isDiag = cx === cy;
+      const rx = ox + cx * cW, ry = oy + cy * cH;
+      svg.append(svgEl('rect', { x:rx, y:ry, width:cW-2, height:cH-2,
+        fill: isDiag ? C.accent : C.amber,
+        'fill-opacity': isDiag ? (0.5 + v / 30) : 0.25 + v / 40,
+        stroke: C.lineSoft }));
+      const t = svgEl('text', { x:rx+cW/2, y:ry+cH/2+6, 'text-anchor':'middle',
+        fill: isDiag ? '#fff' : '#232528',
+        'font-size':'20', 'font-weight':'700', 'font-family':SANS });
+      t.textContent = v; svg.append(t);
+    });
   });
 }
 
@@ -1579,9 +1630,10 @@ function renderModelCompare() {
   const svg = clearSvg('svg-model-compare');
   if (!svg) return;
   const models = [
-    { name:'Logistic Reg',  f1: MODEL_METRICS.lr.f1  },
-    { name:'Random Forest', f1: MODEL_METRICS.rf.f1  },
-    { name:'XGBoost',       f1: MODEL_METRICS.xgboost.f1, ens:true },
+    { name:'Naive Bayes',     f1: 0.31 },
+    { name:'ARIMA',           f1: 0.33 },
+    { name:'Random Forest',   f1: MODEL_METRICS.rf_weekly.f1 },
+    { name:'XGBoost Weekly',  f1: MODEL_METRICS.xgb_weekly.f1, ens:true },
   ];
   const W=560, H=220, padL=110, padR=40, padT=20, padB=36;
   const gap = 10;
@@ -1631,10 +1683,12 @@ function renderFeatureBars() {
 
 // ── Page 1 — Prediction card ───────────────────────────────────────────────────
 function renderPrediction(p) {
-  const isUp  = !p || p.direction === 'UP';
-  const conf  = p?.probability ?? null;
-  const dir   = p?.direction ?? 'UP';
-  const color = isUp ? C.accent : C.red;
+  const dir      = p?.direction ?? 'UP';
+  const isUp     = dir === 'UP';
+  const isNeutral= dir === 'SAME';
+  const conf     = p?.probability ?? null;
+  const color    = isNeutral ? '#2A2A72' : (isUp ? C.accent : C.red);
+  const arrow    = isNeutral ? '–' : (isUp ? '↑' : '↓');
 
   const key      = modelKeyFromName(p?.model_name);
   const accVal   = MODEL_METRICS[key]?.accuracy ?? null;
@@ -1648,7 +1702,7 @@ function renderPrediction(p) {
   const circle  = document.getElementById('pred-circle');
   const label   = document.querySelector('.pred-conf-label');
 
-  if (arrowEl) arrowEl.textContent  = isUp ? '↑' : '↓';
+  if (arrowEl) arrowEl.textContent  = arrow;
   if (arrowEl) arrowEl.style.color  = color;
   if (dirEl)   dirEl.textContent    = dir;
   if (dirEl)   dirEl.style.color    = color;
@@ -1658,7 +1712,7 @@ function renderPrediction(p) {
   if (barEl)   { barEl.style.width = accPct !== null ? `${accPct}%` : '0%'; barEl.style.background = C.accent; }
   if (circle)  { circle.style.borderColor = color; circle.style.boxShadow = `0 0 60px ${color}44`; }
 
-  const modelName = p?.model_name ?? 'XGBoost';
+  const modelName = p?.model_name ?? 'Random Forest Weekly';
   document.getElementById('ensemble-rows').innerHTML = `
     <div class="ensemble-row">
       <div class="ensemble-name highlight">${modelName}</div>
@@ -1698,15 +1752,18 @@ function renderKPIs(latest, prev) {
   const dateLabel = document.getElementById('pred-date-label');
   if (dateLabel) {
     const label = nextTradingDay.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    dateLabel.textContent = `MSFT · Tomorrow · ${label}`;
+    const weekNr = (() => { const d = new Date(nextTradingDay); d.setHours(0,0,0,0); d.setDate(d.getDate()+3-(d.getDay()+6)%7); const w = new Date(d.getFullYear(),0,4); return 'W'+String(1+Math.round(((d-w)/86400000-3+(w.getDay()+6)%7)/7)).padStart(2,'0'); })();
+    dateLabel.textContent = `MSFT · Next week · ${weekNr} · ${label}`;
   }
 }
 
 // ── Page 3 — Metrics ───────────────────────────────────────────────────────────
 const MODEL_METRICS = {
-  xgboost:  { accuracy: 0.5223, precision: 0.5272, recall: 0.5223, f1: 0.5222, label: 'XGBoost (it3)',            days: 471 },
-  rf:       { accuracy: 0.4841, precision: 0.4827, recall: 0.4841, f1: 0.4832, label: 'Random Forest (it3)',       days: 471 },
-  lr:       { accuracy: 0.4862, precision: 0.4983, recall: 0.4862, f1: 0.4737, label: 'Logistic Regression (it3)', days: 471 },
+  xgboost:    { accuracy: 0.5223, precision: 0.5272, recall: 0.5223, f1: 0.5222, label: 'XGBoost (it3)',            days: 471 },
+  rf:         { accuracy: 0.4841, precision: 0.4827, recall: 0.4841, f1: 0.4832, label: 'Random Forest (it3)',       days: 471 },
+  lr:         { accuracy: 0.4862, precision: 0.4983, recall: 0.4862, f1: 0.4737, label: 'Logistic Regression (it3)', days: 471 },
+  rf_weekly:  { accuracy: 0.4375, precision: 0.4481, recall: 0.4308, f1: 0.4254, label: 'Random Forest Weekly',      days: 32  },
+  xgb_weekly: { accuracy: 0.3958, precision: 0.4459, recall: 0.3877, f1: 0.3763, label: 'XGBoost Weekly',            days: 48  },
 };
 
 function renderMetrics(metrics) {
@@ -1718,7 +1775,7 @@ function renderMetrics(metrics) {
 }
 
 function applyModelSelection(key) {
-  const m = MODEL_METRICS[key] || MODEL_METRICS.xgboost;
+  const m = MODEL_METRICS[key] || MODEL_METRICS.xgb_weekly;
   const correct = Math.round(m.accuracy * m.days);
   document.getElementById('m-accuracy').textContent  = m.accuracy.toFixed(4);
   document.getElementById('m-precision').textContent = m.precision.toFixed(4);
@@ -1729,12 +1786,15 @@ function applyModelSelection(key) {
 }
 
 function modelKeyFromName(name) {
-  if (!name) return 'xgboost';
+  if (!name) return 'xgb_weekly';
   const n = name.toLowerCase();
-  if (n.includes('xgb'))     return 'xgboost';
+  if (n.includes('xgboost') && n.includes('weekly')) return 'xgb_weekly';
+  if (n.includes('xgb_weekly'))                      return 'xgb_weekly';
+  if (n.includes('rf_weekly') || (n.includes('random') && n.includes('weekly'))) return 'rf_weekly';
+  if (n.includes('xgb') || n.includes('xgboost'))   return 'xgboost';
   if (n.includes('random') || n.includes('forest') || n.includes('rf')) return 'rf';
-  if (n.includes('logistic') || n.includes('lr'))  return 'lr';
-  return 'xgboost';
+  if (n.includes('logistic') || n.includes('lr'))   return 'lr';
+  return 'xgb_weekly';
 }
 
 function setActiveModel(modelName) {
@@ -1796,7 +1856,7 @@ function renderAll(data, prediction, metrics) {
   renderModelCompare();
   renderFeatureBars();
   renderMetrics(metrics ?? []);
-  apiFetch('/api/prediction/history?n=20').then(renderPredictionHistory).catch(() => {});
+  apiFetch('/api/prediction/history?n=10').then(renderPredictionHistory).catch(() => {});
 }
 
 // ── Prediction details modal ───────────────────────────────────────────────────
@@ -1839,10 +1899,10 @@ function openPredDetails() {
     </div>`;
 
   document.getElementById('pred-detail-info').innerHTML = `
-    <div class="pred-detail-row"><span class="pred-detail-key">Model</span><span class="pred-detail-val2">${p?.model_name ?? 'XGBoost (it3)'}</span></div>
-    <div class="pred-detail-row"><span class="pred-detail-key">Features</span><span class="pred-detail-val2">14 technical + macro</span></div>
-    <div class="pred-detail-row"><span class="pred-detail-key">Training data</span><span class="pred-detail-val2">2015 – 2026</span></div>
-    <div class="pred-detail-row"><span class="pred-detail-key">Test accuracy</span><span class="pred-detail-val2">52%</span></div>
+    <div class="pred-detail-row"><span class="pred-detail-key">Model</span><span class="pred-detail-val2">${p?.model_name ?? 'Random Forest Weekly'}</span></div>
+    <div class="pred-detail-row"><span class="pred-detail-key">Features</span><span class="pred-detail-val2">20 technical + peer (MSFT · NVDA · AMZN)</span></div>
+    <div class="pred-detail-row"><span class="pred-detail-key">Training data</span><span class="pred-detail-val2">2015 – 2025 · weekly bars</span></div>
+    <div class="pred-detail-row"><span class="pred-detail-key">Test accuracy</span><span class="pred-detail-val2">39.58% (19/48 weeks)</span></div>
     <div class="pred-detail-row"><span class="pred-detail-key">Last close</span><span class="pred-detail-val2">${p ? `${CURRENCY_SYMBOLS[appSettings.currency] || '$'}${((p.close ?? 0) * (exchangeRates[appSettings.currency] || 1)).toFixed(appSettings.currency === 'JPY' ? 0 : 2)}` : '–'}</span></div>`;
 
   overlay.classList.add('settings-open');

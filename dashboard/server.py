@@ -32,7 +32,9 @@ from flask_cors import CORS
 # ── Paths ────────────────────────────────────────────────────────────────────
 BASE_DIR = Path(__file__).parent.parent  # project root
 DB_PATH = BASE_DIR / "db" / "stocks.db"
-MODELS_DIR = BASE_DIR / "models" / "lucan"
+MODEL_PATH = (
+    Path(__file__).parent / "msft_forecaster" / "pipeline" / "models" / "xgboost_weekly.joblib"
+)
 STATIC_DIR = Path(__file__).parent / "static"
 
 app = Flask(__name__, static_folder=str(STATIC_DIR))
@@ -50,21 +52,31 @@ def no_cache(response):
 
 
 FEATURE_COLS = [
+    "return_1w",
+    "return_4w",
+    "return_8w",
+    "lag_return_1",
+    "lag_return_2",
     "rsi_14",
-    "momentum_5",
-    "momentum_10",
-    "daily_return",
+    "macd",
+    "macd_signal",
+    "macd_hist",
     "price_range_pct",
-    "close_to_sma5_pct",
-    "close_to_sma10_pct",
-    "sma_crossover",
     "rolling_std_5",
     "volume_ratio",
-    "lag_gold_return",
-    "lag_oil_return",
-    "lag_vix_1",
-    "lag_spy_return",
+    "nvda_return_1w",
+    "nvda_lag_return_1",
+    "nvda_rel_strength",
+    "nvda_volume_ratio",
+    "amzn_return_1w",
+    "amzn_lag_return_1",
+    "amzn_rel_strength",
+    "amzn_volume_ratio",
 ]
+
+PEER_TICKERS = ["nvda", "amzn"]
+
+DIRECTION_LABELS = {0: "DOWN", 1: "UP", 2: "SAME"}
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
@@ -76,92 +88,97 @@ def get_conn():
     return conn
 
 
-def load_best_model():
-    """Load the best available trained model + matching scaler."""
-    import re
-
-    for prefix in ("xgboost_lucan", "random_forest_lucan", "logistic_regression_lucan"):
-        models = sorted(MODELS_DIR.glob(f"{prefix}*.pkl"))
-        if not models:
-            continue
-        model_path = models[-1]
-        match = re.search(r"(it\d+)", model_path.stem)
-        if match:
-            scaler_path = MODELS_DIR / f"scaler_lucan_{match.group(1)}.pkl"
-            if not scaler_path.exists():
-                scaler_path = sorted(MODELS_DIR.glob("scaler_lucan*.pkl"))[-1]
-        else:
-            scaler_path = sorted(MODELS_DIR.glob("scaler_lucan*.pkl"))[-1]
-        try:
-            model = joblib.load(model_path)
-            scaler = joblib.load(scaler_path)
-            name = model_path.stem
-            logger.info(f"Loaded model: {name} with scaler: {scaler_path.stem}")
-            return model, scaler, name
-        except Exception as e:
-            logger.warning(f"Could not load {prefix}: {e}")
-    return None, None, None
+def load_model():
+    """Load Timur's XGBoost weekly bundle (model + scaler + feature list)."""
+    try:
+        bundle = joblib.load(MODEL_PATH)
+        logger.info("Loaded model: xgboost_weekly")
+        return bundle["model"], bundle["scaler"], bundle["feature_columns"], "xgboost_weekly"
+    except Exception as e:
+        logger.error("Could not load model from %s: %s", MODEL_PATH, e)
+        return None, None, None, None
 
 
-def _rsi(series: pd.Series, window: int = 14) -> pd.Series:
-    """Wilder's RSI."""
+def _rsi_weekly(series: pd.Series) -> pd.Series:
+    """RSI using Wilder's EWM smoothing (com=13, min_periods=14)."""
     delta = series.diff()
     gain = delta.clip(lower=0)
     loss = -delta.clip(upper=0)
-    avg_gain = gain.ewm(com=window - 1, min_periods=window).mean()
-    avg_loss = loss.ewm(com=window - 1, min_periods=window).mean()
-    rs = avg_gain / avg_loss
-    return 100 - (100 / (1 + rs))
+    avg_gain = gain.ewm(com=13, min_periods=14).mean()
+    avg_loss = loss.ewm(com=13, min_periods=14).mean()
+    return 100 - (100 / (1 + avg_gain / avg_loss))
 
 
-def build_features(conn, n_rows: int = 60) -> pd.DataFrame:
-    """Merge the last n_rows of all tables and engineer features matching training."""
+def build_weekly_features(conn, n_daily_rows: int = 400) -> pd.DataFrame:
+    """Fetch daily MSFT + peer data, resample to weekly, compute all 20 features."""
     msft = pd.read_sql(
-        f"SELECT * FROM msft_daily ORDER BY date DESC LIMIT {n_rows}", conn
-    ).sort_values("date")
-    gold = pd.read_sql(
-        f"SELECT * FROM gold_prices ORDER BY date DESC LIMIT {n_rows}", conn
-    ).sort_values("date")
-    oil = pd.read_sql(
-        f"SELECT * FROM oil_prices ORDER BY date DESC LIMIT {n_rows}", conn
-    ).sort_values("date")
-    vix = pd.read_sql(
-        f"SELECT * FROM vix_data ORDER BY date DESC LIMIT {n_rows}", conn
-    ).sort_values("date")
-    spy = pd.read_sql(
-        f"SELECT * FROM spy_data ORDER BY date DESC LIMIT {n_rows}", conn
+        f"SELECT date, open, high, low, close, volume FROM msft_daily ORDER BY date DESC LIMIT {n_daily_rows}",
+        conn,
     ).sort_values("date")
 
-    df = (
-        msft.merge(gold, on="date", how="left")
-        .merge(oil, on="date", how="left")
-        .merge(vix, on="date", how="left")
-        .merge(spy, on="date", how="left")
+    msft["date"] = pd.to_datetime(msft["date"])
+    msft = msft.set_index("date")
+
+    weekly = (
+        msft.resample("W-FRI")
+        .agg({"open": "first", "high": "max", "low": "min", "close": "last", "volume": "sum"})
+        .dropna(subset=["close"])
     )
-    df[["gold_close", "oil_close", "vix", "spy_close"]] = df[
-        ["gold_close", "oil_close", "vix", "spy_close"]
-    ].ffill()
 
-    close = df["close"]
-    sma5 = close.rolling(5).mean()
-    sma10 = close.rolling(10).mean()
+    close = weekly["close"]
+    high = weekly["high"]
+    low = weekly["low"]
+    vol = weekly["volume"]
 
-    df["rsi_14"] = _rsi(close)
-    df["daily_return"] = close.pct_change() * 100
-    df["momentum_5"] = close.pct_change(5) * 100
-    df["momentum_10"] = close.pct_change(10) * 100
-    df["close_to_sma5_pct"] = (close - sma5) / sma5 * 100
-    df["close_to_sma10_pct"] = (close - sma10) / sma10 * 100
-    df["sma_crossover"] = sma5 / sma10
-    df["price_range_pct"] = (df["high"] - df["low"]) / close * 100
-    df["rolling_std_5"] = close.rolling(5).std()
-    df["volume_ratio"] = df["volume"] / df["volume"].rolling(20).mean()
-    df["lag_gold_return"] = df["gold_close"].pct_change().shift(1) * 100
-    df["lag_oil_return"] = df["oil_close"].pct_change().shift(1) * 100
-    df["lag_vix_1"] = df["vix"].shift(1)
-    df["lag_spy_return"] = df["spy_close"].pct_change().shift(1) * 100
+    weekly["return_1w"] = close.pct_change(1) * 100
+    weekly["return_4w"] = close.pct_change(4) * 100
+    weekly["return_8w"] = close.pct_change(8) * 100
+    weekly["lag_return_1"] = weekly["return_1w"].shift(1)
+    weekly["lag_return_2"] = weekly["return_1w"].shift(2)
+    weekly["rsi_14"] = _rsi_weekly(close)
 
-    return df.dropna().reset_index(drop=True)
+    ema12 = close.ewm(span=12, adjust=False).mean()
+    ema26 = close.ewm(span=26, adjust=False).mean()
+    weekly["macd"] = ema12 - ema26
+    weekly["macd_signal"] = weekly["macd"].ewm(span=9, adjust=False).mean()
+    weekly["macd_hist"] = weekly["macd"] - weekly["macd_signal"]
+
+    weekly["price_range_pct"] = (high - low) / close * 100
+    weekly["rolling_std_5"] = close.rolling(5).std()
+    weekly["volume_ratio"] = vol / vol.rolling(20).mean()
+
+    msft_return_1w = weekly["return_1w"]
+
+    for peer in PEER_TICKERS:
+        close_col = f"{peer}_close"
+        volume_col = f"{peer}_volume"
+        try:
+            peer_df = pd.read_sql(
+                f"SELECT date, {close_col}, {volume_col} FROM {peer}_daily ORDER BY date DESC LIMIT {n_daily_rows}",
+                conn,
+            ).sort_values("date")
+            peer_df["date"] = pd.to_datetime(peer_df["date"])
+            peer_df = peer_df.set_index("date")
+
+            peer_w = peer_df.resample("W-FRI").agg({close_col: "last", volume_col: "sum"})
+            weekly[close_col] = peer_w[close_col]
+            weekly[volume_col] = peer_w[volume_col]
+
+            peer_close = weekly[close_col]
+            peer_volume = weekly[volume_col]
+
+            weekly[f"{peer}_return_1w"] = peer_close.pct_change(1) * 100
+            weekly[f"{peer}_lag_return_1"] = weekly[f"{peer}_return_1w"].shift(1)
+            weekly[f"{peer}_rel_strength"] = msft_return_1w - weekly[f"{peer}_return_1w"]
+            weekly[f"{peer}_volume_ratio"] = peer_volume / peer_volume.rolling(20).mean()
+        except Exception as e:
+            logger.warning("Peer features unavailable for %s: %s — using defaults", peer, e)
+            weekly[f"{peer}_return_1w"] = 0.0
+            weekly[f"{peer}_lag_return_1"] = 0.0
+            weekly[f"{peer}_rel_strength"] = 0.0
+            weekly[f"{peer}_volume_ratio"] = 1.0
+
+    return weekly.dropna().reset_index()
 
 
 # ── Routes ───────────────────────────────────────────────────────────────────
@@ -185,11 +202,14 @@ def stock_history():
         df = pd.read_sql(
             f"""
             SELECT m.date, m.open, m.high, m.low, m.close, m.volume,
-                   g.gold_close, o.oil_close, v.vix
+                   g.gold_close, o.oil_close, v.vix,
+                   n.nvda_close, a.amzn_close
             FROM msft_daily m
             LEFT JOIN gold_prices g ON m.date = g.date
             LEFT JOIN oil_prices  o ON m.date = o.date
             LEFT JOIN vix_data    v ON m.date = v.date
+            LEFT JOIN nvda_daily  n ON m.date = n.date
+            LEFT JOIN amzn_daily  a ON m.date = a.date
             ORDER BY m.date DESC LIMIT {days}
         """,
             conn,
@@ -282,8 +302,8 @@ def prediction_latest():
         ]
         if "predictions" in tables:
             row = conn.execute(
-                "SELECT p.*, m.close FROM predictions p "
-                "JOIN msft_daily m ON p.date = m.date "
+                "SELECT p.*, (SELECT close FROM msft_daily ORDER BY date DESC LIMIT 1) as close "
+                "FROM predictions p "
                 "ORDER BY p.date DESC LIMIT 1"
             ).fetchone()
             if row:
@@ -293,7 +313,9 @@ def prediction_latest():
                         "status": "ok",
                         "data": {
                             "date": row["date"],
-                            "direction": ("UP" if row["predicted_direction"] == 1 else "DOWN"),
+                            "direction": DIRECTION_LABELS.get(
+                                row["predicted_direction"], str(row["predicted_direction"])
+                            ),
                             "prediction": row["predicted_direction"],
                             "probability": round(row["confidence"] * 100, 1),
                             "close": row["close"],
@@ -303,13 +325,13 @@ def prediction_latest():
                 )
 
         # Fallback: compute on-the-fly if predictions table is empty
-        df = build_features(conn, n_rows=60)
+        df = build_weekly_features(conn)
         conn.close()
 
         if df.empty:
             return jsonify({"status": "error", "message": "Not enough data"}), 400
 
-        model, scaler, model_name = load_best_model()
+        model, scaler, feature_cols, model_name = load_model()
         if model is None:
             return (
                 jsonify(
@@ -321,7 +343,7 @@ def prediction_latest():
                 503,
             )
 
-        X = scaler.transform(df[FEATURE_COLS].iloc[[-1]])
+        X = scaler.transform(df[feature_cols].iloc[[-1]])
         pred = int(model.predict(X)[0])
         prob = float(model.predict_proba(X)[0][pred])
 
@@ -329,8 +351,8 @@ def prediction_latest():
             {
                 "status": "ok",
                 "data": {
-                    "date": str(df["date"].iloc[-1]),
-                    "direction": "UP" if pred == 1 else "DOWN",
+                    "date": str(df["date"].iloc[-1].date()),
+                    "direction": DIRECTION_LABELS.get(pred, str(pred)),
                     "prediction": pred,
                     "probability": round(prob * 100, 1),
                     "close": float(df["close"].iloc[-1]),
@@ -396,61 +418,88 @@ def model_metrics():
 @app.route("/api/prediction/history")
 def prediction_history():
     import hashlib, json as _json
+    from datetime import timedelta
 
-    n = request.args.get("n", 20, type=int)
+    n = request.args.get("n", 10, type=int)
     try:
         conn = get_conn()
-        msft = (
-            pd.read_sql(
-                f"SELECT date, close FROM msft_daily ORDER BY date DESC LIMIT {n + 1}",
-                conn,
-            )
-            .sort_values("date")
-            .reset_index(drop=True)
+
+        # Resample daily MSFT to weekly (W-FRI) — same as model training
+        msft_daily = pd.read_sql(
+            "SELECT date, close FROM msft_daily ORDER BY date DESC LIMIT 400",
+            conn,
+        ).sort_values("date")
+        msft_daily["date"] = pd.to_datetime(msft_daily["date"])
+        weekly = (
+            msft_daily.set_index("date")
+            .resample("W-FRI")
+            .last()
+            .dropna()
+            .reset_index()
+            .rename(columns={"date": "week_end"})
         )
+        # Only include completed weeks (week_end in the past)
+        today = pd.Timestamp.today().normalize()
+        weekly = weekly[weekly["week_end"] < today].reset_index(drop=True)
 
         try:
             real_preds = pd.read_sql(
-                "SELECT date, predicted_direction, confidence, model_used FROM predictions ORDER BY date DESC",
+                "SELECT date, predicted_direction, confidence FROM predictions ORDER BY date DESC",
                 conn,
             )
         except Exception:
-            real_preds = pd.DataFrame(
-                columns=["date", "predicted_direction", "confidence", "model_used"]
-            )
+            real_preds = pd.DataFrame(columns=["date", "predicted_direction", "confidence"])
         conn.close()
 
+        # Dummy pattern: results in ~40% accuracy; fixed per week via hash
+        _dummy_pattern = [0, 1, 0, 1, 1, 0, 1, 0, 2, 1]
+
         rows = []
-        for i in range(1, len(msft)):
-            row = msft.iloc[i]
-            prev = msft.iloc[i - 1]
+        for i in range(1, len(weekly)):
+            row = weekly.iloc[i]
+            prev = weekly.iloc[i - 1]
             actual = 1 if row["close"] > prev["close"] else 0
 
-            match = real_preds[real_preds["date"] == row["date"]]
+            week_end = row["week_end"]
+            monday = week_end - timedelta(days=4)
+            week_num = int(week_end.isocalendar()[1])
+            date_str = week_end.strftime("%Y-%m-%d")
+            display = f"{monday.strftime('%Y-%m-%d')} · W{week_num:02d}"
+
+            match = real_preds[real_preds["date"] == date_str]
             if len(match):
                 pred_dir = int(match.iloc[0]["predicted_direction"])
                 conf = float(match.iloc[0]["confidence"])
                 is_dummy = False
             else:
-                seed = int(hashlib.md5(row["date"].encode()).hexdigest()[:8], 16)
-                pred_dir = seed % 2
-                conf = 0.50 + (seed % 25) / 100
+                seed = int(hashlib.md5(date_str.encode()).hexdigest()[:8], 16)
+                pred_dir = _dummy_pattern[seed % 10]
+                conf = 0.52 + (seed % 16) / 100
                 is_dummy = True
+
+            correct = None if pred_dir == 2 else bool(pred_dir == actual)
 
             rows.append(
                 {
-                    "date": row["date"],
+                    "date": display,
                     "predicted_direction": pred_dir,
                     "confidence": round(conf * 100, 1),
                     "actual_direction": actual,
-                    "correct": bool(pred_dir == actual),
+                    "correct": correct,
                     "close": round(float(row["close"]), 2),
                     "is_dummy": is_dummy,
                 }
             )
 
         rows = list(reversed(rows[-n:]))
-        accuracy = round(sum(1 for r in rows if r["correct"]) / len(rows) * 100, 1) if rows else 0
+
+        # Accuracy only from verified real predictions (not dummies)
+        real_decided = [r for r in rows if not r["is_dummy"] and r["correct"] is not None]
+        accuracy = (
+            round(sum(1 for r in real_decided if r["correct"]) / len(real_decided) * 100, 1)
+            if real_decided
+            else None
+        )
         has_dummy = any(r["is_dummy"] for r in rows)
 
         return app.response_class(
